@@ -70,6 +70,8 @@ namespace SpaceEngineers.UWBlockPrograms.Sorter
         Dictionary<string, int> minResources = new Dictionary<string, int> { };
         Dictionary<string, int> queueResources = new Dictionary<string, int> { };
 
+        long countClear = 0;
+
 
         public class MessageOfType
         {
@@ -157,8 +159,11 @@ namespace SpaceEngineers.UWBlockPrograms.Sorter
 
 
 
-        Dictionary<String, IMyAssembler> assemblersInUse = new Dictionary<String, IMyAssembler>();
+        Dictionary<String, List<IMyAssembler>> assemblersInUse = new Dictionary<String, List<IMyAssembler>>();
+        List<IMyAssembler> allAssemblers = new List<IMyAssembler>();
         List<IMyAssembler> availableAssemblers = new List<IMyAssembler>();
+        Dictionary<long, String> assemblerProduction = new Dictionary<long, String>();
+        bool assembleSeveral = false;
 
         List<IMyCargoContainer>
         componentCargos = new List<IMyCargoContainer>(),
@@ -172,8 +177,6 @@ namespace SpaceEngineers.UWBlockPrograms.Sorter
             Runtime.UpdateFrequency = UpdateFrequency.Update1;
 
             foreach (var fc in factories) fc.connect(this);
-
-            reScanObjectGroup<IMyAssembler>(QueueTag, availableAssemblers); // todo factory add/remove
         }
 
         public void reScanObjectGroup<T>(String name, List<T> result, bool local = false) where T : class, IMyTerminalBlock
@@ -194,16 +197,54 @@ namespace SpaceEngineers.UWBlockPrograms.Sorter
             // cargoMain = GridTerminalSystem.SearchBlocksOfName(name, result, i);
         }
 
-        public void startAssembler(String construct)
+        public void addAssembler(IMyAssembler assembler)
         {
-            if (assemblersInUse.ContainsKey(construct) || availableAssemblers.Count == 0) return;
+            allAssemblers.Add(assembler);
+            availableAssemblers.Add(assembler);
+            assemblerProduction[assembler.GetId()] = null;
+        }
+
+        public void removeAssembler(IMyAssembler assembler)
+        {
+            Echo("Remove " + assembler.GetId());
+            stopAssembler(assembler);
+            assemblerProduction.Remove(assembler.GetId());
+            availableAssemblers.Remove(assembler);
+            allAssemblers.Remove(assembler);
+        }
+
+        public void reScanAssemblers()
+        {
+            var currentAssemblers = new List<IMyAssembler>();
+            reScanObjectGroup<IMyAssembler>(QueueTag, currentAssemblers);
+            var oldAssemblersIds = (from assembler in allAssemblers select assembler.GetId()).ToHashSet();
+
+            foreach (var assembler in currentAssemblers.Where(assembler => !oldAssemblersIds.Contains(assembler.GetId())))
+            {
+                addAssembler(assembler);
+            }
+
+            var currAssemblerIds = (from assembler in currentAssemblers select assembler.GetId()).ToHashSet();
+
+            foreach (var assembler in allAssemblers.Where(assembler => !currAssemblerIds.Contains(assembler.GetId())).ToList())
+            {
+                removeAssembler(assembler);
+            }
+        }
+
+        public bool startAssembler(String construct)
+        {
+            if (availableAssemblers.Count == 0) return false;
 
             var assembler = availableAssemblers.Pop();
-            assemblersInUse[construct] = assembler;
+            Echo("Assembler start " + construct);
+            if (!assemblersInUse.ContainsKey(construct)) assemblersInUse[construct] = new List<IMyAssembler>();
+
+            assemblersInUse[construct].Add(assembler);
+            assemblerProduction[assembler.GetId()] = construct;
 
             MyDefinitionId objectIdToAdd = new MyDefinitionId();
             bool found;
-
 
             if (found = MyDefinitionId.TryParse("MyObjectBuilder_BlueprintDefinition/" + construct, out objectIdToAdd))
             {
@@ -230,26 +271,54 @@ namespace SpaceEngineers.UWBlockPrograms.Sorter
                 {
                     CrushedQueued.Add(construct);
                     Alarms.alarm("CRUSH " + construct);
-                    stopAssembler(construct);
+                    stopAssembler(assembler);
+                    return false;
                 }
             }
             else
             {
                 Alarms.alarm("Cant parse " + construct);
-                stopAssembler(construct);
+                stopAssembler(assembler);
+                return false;
             }
+            return true;
         }
-        public void stopAssembler(String construct)
+        public void stopAssembler(IMyAssembler assembler, bool removeFromInUse = true)
         {
-            if (!assemblersInUse.ContainsKey(construct)) return;
-            var assembler = assemblersInUse[construct];
-            assemblersInUse.Remove(construct);
+
+            var assemblerId = assembler.GetId();
+            Echo("Assembler stop " + assemblerId);
+            var construct = assemblerProduction[assemblerId];
+            if (construct == null) return;
+
+
+            if (removeFromInUse)
+            {
+                assemblersInUse[construct].Remove(assembler);
+                if (assemblersInUse[construct].Count == 0)
+                {
+                    assemblersInUse.Remove(construct);
+                }
+            }
 
             assembler.ClearQueue();
             assembler.Enabled = false;
             assembler.Repeating = false;
 
             availableAssemblers.Add(assembler);
+            assemblerProduction[assemblerId] = null;
+        }
+        public void stopAllAssembler(String construct)
+        {
+            if (!assemblersInUse.ContainsKey(construct)) return;
+            Echo("<StopAll " + construct);
+            foreach (var assembler in assemblersInUse[construct])
+            {
+                stopAssembler(assembler, false);
+            }
+            Echo(">StopAll " + construct);
+            assemblersInUse[construct].Clear();
+            assemblersInUse.Remove(construct);
         }
 
         public class DefaultDictionary<TKey, TValue> : Dictionary<TKey, TValue> where TValue : new()
@@ -291,7 +360,7 @@ namespace SpaceEngineers.UWBlockPrograms.Sorter
                 prefix = "K";
             }
 
-            return String.Format("{0,3:0.}", count) + prefix;
+            return String.Format("{0,3:0.0}", count) + prefix;
 
         }
 
@@ -524,13 +593,44 @@ namespace SpaceEngineers.UWBlockPrograms.Sorter
                 }
             }
 
+
             foreach (string prod in (from x in assemblersInUse.Keys select x).ToList())
             {
-                if (!queueResources.ContainsKey(prod)) stopAssembler(prod);
+                if (!queueResources.ContainsKey(prod)) stopAllAssembler(prod);
             }
 
-            foreach (string prod in queueResources.Keys) startAssembler(prod);
+            Echo("1");
 
+
+            var needAssemblers = queueResources.Where(res => !assemblersInUse.ContainsKey(res.Key)).Count();
+            var nowSeveralAssemblers = availableAssemblers.Count >= needAssemblers;
+            Echo("2");
+
+            if (!nowSeveralAssemblers) //stop all except one on all resources
+            {
+                foreach (var productors in assemblersInUse.Values)
+                {
+                    Echo("3");
+                    while (productors.Count > 1)
+                    {
+                        Echo("Assembler clear except 1");
+                        countClear++;
+                        stopAssembler(productors[1]);
+                    }
+                    Echo("4");
+                }
+            }
+            Echo("5");
+            while (availableAssemblers.Count > 0)
+            {
+                var queuedStarted = false;
+                foreach (string prod in queueResources.Keys)
+                {
+                    queuedStarted |= startAssembler(prod);
+                }
+                if (!queuedStarted) break;
+            }
+            Echo("7");
 
             String queued;
             if (queueResources.Count == 0)
@@ -539,7 +639,8 @@ namespace SpaceEngineers.UWBlockPrograms.Sorter
             }
             else
             {
-                queued = "Assemblers used: " + assemblersInUse.Count.ToString() + " of " + (availableAssemblers.Count + assemblersInUse.Count).ToString() + "\nQueued:\n";
+
+                queued = "Assemblers used: " + (allAssemblers.Count - availableAssemblers.Count).ToString() + " of " + allAssemblers.Count.ToString() + "\nQueued:\n";
                 foreach (KeyValuePair<string, int> entry in queueResources)
                 {
                     queued += "\n" + (CrushedQueued.Contains(entry.Key) ? "(CRUSHED) " : "") + entry.Key + ": " + entry.Value.ToString();
@@ -623,6 +724,7 @@ namespace SpaceEngineers.UWBlockPrograms.Sorter
         {
             Alarms.next();
 
+            reScanAssemblers();
             reScanObjectGroup<IMyCargoContainer>(UserTag, userCargos); //todo move to one loop
             reScanObjectGroup<IMyCargoContainer>(ResourcesTag, resourcesCargos);
             reScanObjectGroup<IMyCargoContainer>(ComponentsTag, componentCargos);
@@ -632,7 +734,9 @@ namespace SpaceEngineers.UWBlockPrograms.Sorter
             Alarms.info("Component Cargo: " + componentCargos.Count.ToString());
             Alarms.info("User Cargo: " + userCargos.Count.ToString());
             Alarms.info("Ammo Cargo: " + ammoCargos.Count.ToString());
+            Alarms.info("Assemblers: " + allAssemblers.Count.ToString());
             Alarms.info("");
+            Alarms.info("Cleared: " + countClear.ToString());
             calculateCount();
 
             minComponents.Clear();
