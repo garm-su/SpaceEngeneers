@@ -32,15 +32,19 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
         //cargoLoad,,Таскало 01 TB handleCharged
         //cargoSave,
         //Battery,Таскало 01 TB handleCharged
+        //connect,Таскало 01 TB handleConnected
         //batteryCharge,Recharge
         //batteryCharge,Auto
-        //ч.Ice: 3000
-        //MyObjectBuilder_Ore.Ice: 42000
+        //MyObjectBuilder_Ore.Ice: 3000
+        //MyObjectBuilder_Ingot.Iron: 42000
         //MyObjectBuilder_Ore.Gold: 42000
-        //MyObjectBuilder_Ore.Gold: 3000
+        //MyObjectBuilder_Component.SteelPlate: 3000
+        //MyObjectBuilder_AmmoMagazine.NATO_25x184mm: 3000
 
 
         const String SKIP = "[SKIP]";
+        const String StatusTag = "[STATUS]";
+        const String RequestTag = "[REQUEST]";
         const double BATTERY_MAX_LOAD = 0.95;
         Color mainColor = new Color(0, 255, 0);
 
@@ -85,6 +89,39 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             }
         }
 
+        public void reScanObjectExact<T>(List<T> result, String name) where T : class, IMyTerminalBlock
+        {
+            GridTerminalSystem.GetBlocksOfType<T>(result, item => item.CustomName == name);
+        }
+        public void reScanObjectExactLocal<T>(List<T> result, String name) where T : class, IMyTerminalBlock
+        {
+            GridTerminalSystem.GetBlocksOfType<T>(result, item => item.CubeGrid == Me.CubeGrid && item.CustomName == name);
+        }
+        public void reScanObjectGroupLocal<T>(List<T> result, String name) where T : class, IMyTerminalBlock
+        {
+            GridTerminalSystem.GetBlocksOfType<T>(result, item => item.CubeGrid == Me.CubeGrid && item.CustomName.Contains(name));
+        }
+        public void reScanObjectGroup<T>(List<T> result, String name) where T : class, IMyTerminalBlock
+        {
+            GridTerminalSystem.GetBlocksOfType<T>(result, item => item.CustomName.Contains(name));
+        }
+        public void reScanObjectsLocal<T>(List<T> result, Func<IMyTerminalBlock, bool> check) where T : class, IMyTerminalBlock
+        {
+            GridTerminalSystem.GetBlocksOfType<T>(result, item => item.CubeGrid == Me.CubeGrid && check(item));
+        }
+        public void reScanObjectsLocal<T>(List<T> result) where T : class, IMyTerminalBlock
+        {
+            GridTerminalSystem.GetBlocksOfType<T>(result, item => item.CubeGrid == Me.CubeGrid);
+        }
+        public void reScanObjects<T>(List<T> result) where T : class, IMyTerminalBlock
+        {
+            GridTerminalSystem.GetBlocksOfType<T>(result);
+        }
+        public void reScanObjects<T>(List<T> result, Func<IMyTerminalBlock, bool> check) where T : class, IMyTerminalBlock
+        {
+            GridTerminalSystem.GetBlocksOfType<T>(result, check);
+        }
+
         private string getName(MyItemType type)
         {
             return type.TypeId + '.' + type.SubtypeId;
@@ -94,10 +131,10 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
         {
             Echo("cargoLoad: " + group);
             var blocks = new List<IMyTerminalBlock>();
-            GridTerminalSystem.GetBlocksOfType<IMyTerminalBlock>(blocks, b => b.CubeGrid == Me.CubeGrid && b.HasInventory);
+            reScanObjectsLocal(blocks, b => b.HasInventory);
             var outerCargo = new List<IMyCargoContainer>();
             var needResources = new Dictionary<string, int>();
-            GridTerminalSystem.GetBlocksOfType<IMyCargoContainer>(outerCargo, b => b.CubeGrid != Me.CubeGrid && b.HasInventory);
+            reScanObjectsLocal(outerCargo, b => b.HasInventory);
 
             bool full = true;
             double need = 0, found = 0;
@@ -179,8 +216,8 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
         public void cargoSave(string group)
         {
             Echo("cargoSave: " + group);
-            List<IMyTerminalBlock> blocks = new List<IMyTerminalBlock>();
-            GridTerminalSystem.GetBlocksOfType<IMyTerminalBlock>(blocks, b => b.CubeGrid == Me.CubeGrid && b.HasInventory);
+            var blocks = new List<IMyTerminalBlock>();
+            reScanObjectsLocal(blocks, b => b.HasInventory);
             var info = new List<String>();
 
             foreach (var block in blocks)
@@ -199,6 +236,21 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             }
         }
 
+        public void connect(String connectorName, String tbName)
+        {
+            var blocks = new List<IMyShipConnector>();
+            reScanObjectsLocal(blocks, b => b.HasInventory);
+            foreach (var connector in blocks)
+            {
+                connector.Connect();
+                if (connector.Status == MyShipConnectorStatus.Connected)
+                {
+                    run(tbName);
+                    return;
+                }
+            }
+        }
+
         public void print(String s)
         {
             var surface = Me.GetSurface(0);
@@ -210,22 +262,16 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
 
         public void run(String name)
         {
-            Echo("Run after: " + name);
             var tbs = new List<IMyTimerBlock>();
-            GridTerminalSystem.GetBlocksOfType<IMyTimerBlock>(tbs, tb => tb.CubeGrid == Me.CubeGrid && tb.CustomName == name);
-
-            Echo("TB found " + tbs.Count);
-            foreach (var tb in tbs)
-            {
-                tb.Trigger();
-            }
+            reScanObjectExactLocal(tbs, name);
+            tbs.ForEach(tb => tb.Trigger());
         }
 
         public void batteryLoad(String after)
         {
             Echo("batteryLoad");
             List<IMyBatteryBlock> batteries = new List<IMyBatteryBlock>();
-            GridTerminalSystem.GetBlocksOfType<IMyBatteryBlock>(batteries, b => b.CubeGrid == Me.CubeGrid);
+            reScanObjectsLocal(batteries);
             float curLoad;
             if (batteries.Count > 0)
             {
@@ -264,7 +310,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                     return;
             }
             List<IMyBatteryBlock> batteries = new List<IMyBatteryBlock>();
-            GridTerminalSystem.GetBlocksOfType<IMyBatteryBlock>(batteries, b => b.CubeGrid == Me.CubeGrid);
+            reScanObjectsLocal(batteries);
             foreach (var bat in batteries)
             {
                 bat.ChargeMode = mode;
@@ -279,7 +325,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
 
         public void fixGridState()
         {
-            GridTerminalSystem.GetBlocksOfType<IMyTerminalBlock>(allTBlocks, x => x.CubeGrid == Me.CubeGrid);
+            reScanObjectsLocal(allTBlocks);
             //todo save armor block state
 
         }
@@ -295,7 +341,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
         {
             //is turrets locked and target is grid
             List<IMyLargeTurretBase> turrets = new List<IMyLargeTurretBase>();
-            GridTerminalSystem.GetBlocksOfType<IMyLargeTurretBase>(turrets);
+            reScanObjects(turrets);
             bool isTarget = false;
             foreach (IMyLargeTurretBase t in turrets)
             {
@@ -322,7 +368,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             if (checkDestroyedBlocks)
             {
                 List<IMyTerminalBlock> currentState = new List<IMyTerminalBlock>();
-                GridTerminalSystem.GetBlocksOfType<IMyTerminalBlock>(currentState, x => x.CubeGrid == Me.CubeGrid);
+                reScanObjectsLocal(currentState);
                 isDestroyedBlocks = currentState.Count() != allTBlocks.Count();
                 destroyedAmount = allTBlocks.Count() - currentState.Count();
             }
@@ -338,7 +384,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
 
             double damagedCounter = 0;
 
-            GridTerminalSystem.GetBlocksOfType<IMyTerminalBlock>(grid, x => x.CubeGrid == Me.CubeGrid);
+            reScanObjectsLocal(grid);
 
             foreach (IMyTerminalBlock terminalBlock in grid)
             {
@@ -369,7 +415,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
         public double getGridBatteryCharge()
         {
             List<IMyBatteryBlock> batteries = new List<IMyBatteryBlock>();
-            GridTerminalSystem.GetBlocksOfType<IMyBatteryBlock>(batteries, x => x.CubeGrid == Me.CubeGrid);
+            reScanObjectsLocal(batteries);
             float current_capacity = 0;
             float max_capacity = 0;
             foreach (IMyBatteryBlock b in batteries)
@@ -384,7 +430,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
         {
             //gasType {"Oxygen","Hydrogen"}                                            
             List<IMyGasTank> tanks = new List<IMyGasTank>();
-            GridTerminalSystem.GetBlocksOfType<IMyGasTank>(tanks, x => x.CubeGrid == Me.CubeGrid && x.BlockDefinition.SubtypeId.Contains(gasType));
+            reScanObjectsLocal(tanks, x => x.BlockDefinition.SubtypeId.Contains(gasType));
             double current_amount = 0;
             double max_capacity = 0;
             foreach (IMyGasTank t in tanks)
@@ -400,7 +446,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             double maxVolume = 0;
             double currentVolume = 0;
             List<IMyCargoContainer> cargos = new List<IMyCargoContainer>();
-            GridTerminalSystem.GetBlocksOfType<IMyCargoContainer>(cargos, x => x.CubeGrid == Me.CubeGrid);
+            reScanObjectsLocal(cargos);
             foreach (IMyCargoContainer container in cargos)
             {
                 maxVolume = maxVolume + (double)container.GetInventory(0).MaxVolume;
@@ -414,7 +460,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
         {
             double result = 0;
             List<IMyShipController> controls = new List<IMyShipController>();
-            GridTerminalSystem.GetBlocksOfType<IMyShipController>(controls, x => x.CubeGrid == Me.CubeGrid);
+            reScanObjectsLocal(controls);
             result = (double)controls[0].GetShipVelocities().LinearVelocity.Length();
             return result;
         }
@@ -466,7 +512,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
 
         public void Setup()
         {
-            GridTerminalSystem.GetBlocksOfType<IMyRadioAntenna>(antenna, x => x.CubeGrid == Me.CubeGrid);
+            reScanObjectsLocal(antenna);
 
             if (antenna.Count() > 0)
             {
@@ -532,6 +578,9 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                     case "cargoLoad":
                         cargoLoad(props[1], props[2]);
                         break;
+                    case "connect":
+                        connect(props[1], props[2]);
+                        break;
                     case "batteryCharge":
                         batteryCharge(props[1]);
                         break;
@@ -575,7 +624,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                     if (isLowAmmo())
                     {
                         //todo check what type of ammo need and how many, add to details
-                        string tmp = "{\"event\":\"lowAmmo\"}";
+                        string tmp = "{\"Event\":\"lowAmmo\"}";
                         events.Add(tmp);
                     }
                     if (isDamaged())
@@ -596,7 +645,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                 if (isAttacked())
                 {
                     statusMessage = "\"red\"";
-                    string tmp = "{\"event\":\"underAttack\"";
+                    string tmp = "{\"Event\":\"underAttack\"";
                     string t = "";
                     if (lockedState)
                     {
@@ -644,8 +693,8 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                 statusMessage = statusMessage + "}";
                 Echo(statusMessage);
 
-                GridTerminalSystem.GetBlocksOfType<IMyTextPanel>(status_displays, x => x.CubeGrid == Me.CubeGrid && x.CustomName.Contains("STATUS"));
-                GridTerminalSystem.GetBlocksOfType<IMyTextPanel>(request_displays, x => x.CubeGrid == Me.CubeGrid && x.CustomName.Contains("REQ"));
+                reScanObjectGroupLocal(status_displays, StatusTag);
+                reScanObjectGroupLocal(request_displays, RequestTag);
 
                 //Me.CustomData = statusMessage;
                 //string cmdTag = commandChannelTag + "." + Me.CubeGrid.CustomName;
