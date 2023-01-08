@@ -316,7 +316,38 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                 bat.ChargeMode = mode;
             }
         }
+		
+		public Dictionary<string, int> getCurrentInventory()
+		{
+			List<IMyTerminalBlock> cargo_blocks = new List<IMyTerminalBlock>();
+			reScanObjectsLocal<IMyTerminalBlock>(cargo_blocks, b => b.HasInventory);
+			Dictionary<string, int> result = new Dictionary<string, int>();
+			var items = new List<MyInventoryItem>();
+			cargo_blocks.GetInventory(0).GetItems(items);
+			foreach (var item in items){
+				var itemName = getName(item.Type);
+				if (result.ContainsKey(itemName)){
+					result[itemName] += (int)item.Amount;
+				}
+				else{
+					result.Add(itemName, (int)item.Amount);
+				}
+			}
+			
+			return result;
+		}
 
+		public void showInventory(IMyTextSurface display, Dictionary<string, int> items, int strsize){
+
+			string itemStr = "";
+			
+			foreach(i in items){
+				itemStr += i.Key + ":" + string(" ", strsize - i.Key.Length - i.Value.ToString().Length) + i.Value.ToString() + "\n";
+				//test strsize - add logic if itemStr larger than strsize
+			}
+			display.WriteText(itemStr);
+		}
+		
         public Program()
         {
             // Set the script to run every 100 ticks, so no timer needed.
@@ -693,7 +724,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                 statusMessage = statusMessage + "}";
                 Echo(statusMessage);
 
-                reScanObjectGroupLocal(status_displays, StatusTag);
+                //reScanObjectGroupLocal(status_displays, StatusTag);
                 reScanObjectGroupLocal(request_displays, RequestTag);
 
                 //Me.CustomData = statusMessage;
