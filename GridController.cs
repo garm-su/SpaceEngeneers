@@ -80,6 +80,24 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
         IMyBroadcastListener commandListener;
         IMyBroadcastListener statusListener;
 
+        public class DefaultDictionary<TKey, TValue> : Dictionary<TKey, TValue> where TValue : new()
+        {
+            public new TValue this[TKey key]
+            {
+                get
+                {
+                    TValue val;
+                    if (!TryGetValue(key, out val))
+                    {
+                        val = new TValue();
+                        Add(key, val);
+                    }
+                    return val;
+                }
+                set { base[key] = value; }
+            }
+        }
+
         public void reReadConfig(Dictionary<string, int> minResourses, String CustomData)
         {
             minResourses.Clear();
@@ -183,7 +201,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             return type.TypeId + '.' + type.SubtypeId;
         }
 
-		private void maxSpeed(string v)
+        private void maxSpeed(string v)
         {
             int newSpeed;
             if (!Int32.TryParse(v, out newSpeed))
@@ -368,26 +386,19 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             batteries.ForEach(bat => bat.ChargeMode = mode);
         }
 
-        public Dictionary<string, int> getCurrentInventory()
+        public Dictionary<string, int> getGridInventory()
         {
-            List<IMyTerminalBlock> cargo_blocks = new List<IMyTerminalBlock>();
-            reScanObjectsLocal<IMyTerminalBlock>(cargo_blocks, b => b.HasInventory);
-            Dictionary<string, int> result = new Dictionary<string, int>();
+            var cargo_blocks = new List<IMyTerminalBlock>();
+            reScanObjectsLocal(cargo_blocks, b => b.HasInventory);
+            var result = new DefaultDictionary<string, int>();
             var items = new List<MyInventoryItem>();
             foreach (var block in cargo_blocks)
             {
+                items.Clear();
                 block.GetInventory(0).GetItems(items);
                 foreach (var item in items)
                 {
-                    var itemName = getName(item.Type);
-                    if (result.ContainsKey(itemName))
-                    {
-                        result[itemName] += (int)item.Amount;
-                    }
-                    else
-                    {
-                        result.Add(itemName, (int)item.Amount);
-                    }
+                    result[getName(item.Type)] += (int)item.Amount;
                 }
             }
 
@@ -505,7 +516,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
 
         public double getGridVelocity()
         {
-			return 0; //sometimes zero controls
+            return 0; //sometimes zero controls
 
             double result = 0;
             List<IMyShipController> controls = new List<IMyShipController>();
@@ -580,7 +591,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             reScanObjectGroupLocal(infoDisplays, infoTag);
             foreach (var display in infoDisplays)
             {
-                display.WriteText(showInventory(getCurrentInventory(), 30));
+                display.WriteText(showInventory(getGridInventory(), 30));
             }
 
             if (arg != "")
@@ -635,7 +646,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                     case "cargoLoad":
                         cargoLoad(props[1], props[2]);
                         break;
-					case "maxSpeed":
+                    case "maxSpeed":
                         maxSpeed(props[1]);
                         break;
                     case "connect":
@@ -730,7 +741,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                     events.Add(tmp);
                 }
 
-				statusMessage = "{\"Name\":\"" + Me.CubeGrid.CustomName + "\",\"Additional\":\"" + additionalStatus + "\",\"Status\":" + statusMessage;
+                statusMessage = "{\"Name\":\"" + Me.CubeGrid.CustomName + "\",\"Additional\":\"" + additionalStatus + "\",\"Status\":" + statusMessage;
 
                 statusMessage = statusMessage + ",\"Info\":[";
                 statusMessage = statusMessage + "{\"GasAmount\":" + getGridGasAmount("Hydrogen") + "},";
@@ -754,7 +765,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                 Echo(statusMessage);
 
                 reScanObjectGroupLocal(status_displays, StatusTag);
-				status_displays.ForEach(display => display.WriteText(statusMessage));
+                status_displays.ForEach(display => display.WriteText(statusMessage));
                 reScanObjectGroupLocal(request_displays, RequestTag);
 
                 //Me.CustomData = statusMessage;
