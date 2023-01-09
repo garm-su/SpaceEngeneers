@@ -24,7 +24,6 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
     {
         // Your code goes between the next #endregion and #region
         #endregion
-
         //all terminalblocks
         List<IMyTerminalBlock> allTBlocks = new List<IMyTerminalBlock>();
         //all armor blocks - be defined
@@ -38,20 +37,22 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
         //cargoLoad,,Таскало 01 TB handleCharged
         //cargoSave,
         //Battery,Таскало 01 TB handleCharged
+        //connect,Таскало 01 TB handleConnected
         //batteryCharge,Recharge
         //batteryCharge,Auto
-        //MyObjectBuilder_Ore.Ice: 3000
+        //MyObjectBuilder_Ore.Ice: 3000		
         //MyObjectBuilder_Ore.Iron: 43000
         //MyObjectBuilder_Ore.Stone: 43000
-        //MyObjectBuilder_Ingot.Iron: 4000
+        //MyObjectBuilder_Ingot.Iron: 42000
         //MyObjectBuilder_Ore.Gold: 42000
         //MyObjectBuilder_Component.SteelPlate: 3000
         //MyObjectBuilder_AmmoMagazine.NATO_25x184mm: 3000
 
 
-        const String SKIP = "[SKIP]";
-        const String StatusTag = "[STATUS]";
-        const String RequestTag = "[REQUEST]";
+        const string SKIP = "[SKIP]";
+        const string StatusTag = "[STATUS]";
+        const string RequestTag = "[REQUEST]";
+        const string infoTag = "[INFO]";
         const double BATTERY_MAX_LOAD = 0.95;
         Color mainColor = new Color(0, 255, 0);
 
@@ -66,10 +67,10 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
         double damagedBlockRatio = 0;
         double destroyedAmount = 0;
 
-        Int32 energyTreshold = 25; //% of max capacity, default - 25%
-        Int32 gasTreshold = 25; //% of max capacity, default - 25%
-        Int32 uraniumTreshold = 0; //kg
-        Int32 damageTreshold = 20; //% of terminal blocks, default - 20%
+        int energyTreshold = 25; //% of max capacity, default - 25%
+        int gasTreshold = 25; //% of max capacity, default - 25%
+        int uraniumTreshold = 0; //kg
+        int damageTreshold = 20; //% of terminal blocks, default - 20%
 
         List<IMyRadioAntenna> antenna = new List<IMyRadioAntenna>();
         List<MyDetectedEntityInfo> targets = new List<MyDetectedEntityInfo>();
@@ -131,9 +132,71 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             GridTerminalSystem.GetBlocksOfType<T>(result, check);
         }
 
+        public double percentOf(double current, double maximum)
+        {
+            return Math.Round(maximum == 0 ? 100 : 100 * current / maximum);
+        }
+        public delegate void OutAction<T>(T x, ref double a, ref double b);
+        public double getGridInfo<T>(OutAction<T> update, Func<T, bool> check = null) where T : class, IMyTerminalBlock
+        {
+            var objects = new List<T>();
+            double current_capacity = 0;
+            double max_capacity = 0;
+
+            reScanObjectsLocal(objects, check);
+
+            objects.ForEach((obj) => update(obj, ref current_capacity, ref max_capacity));
+
+            return percentOf(current_capacity, max_capacity);
+        }
+
+        public double getGridBatteryCharge()
+        {
+            return getGridInfo((IMyBatteryBlock batt, ref double current, ref double max) =>
+            {
+                current += batt.CurrentStoredPower;
+                max += batt.MaxStoredPower;
+            });
+        }
+
+        public double getGridGasAmount(string gasType)
+        {
+            return getGridInfo((IMyGasTank tank, ref double current, ref double max) =>
+            {
+                current += tank.Capacity * tank.FilledRatio;
+                max += tank.Capacity;
+            }, tank => tank.BlockDefinition.SubtypeId.Contains(gasType));
+        }
+
+        public double getGridUsedCargoSpace()
+        {
+            return getGridInfo((IMyCargoContainer cargo, ref double current, ref double max) =>
+            {
+                current += (double)cargo.GetInventory(0).CurrentVolume;
+                max += (double)cargo.GetInventory(0).MaxVolume;
+            });
+        }
+
+
         private string getName(MyItemType type)
         {
             return type.TypeId + '.' + type.SubtypeId;
+        }
+
+		private void maxSpeed(string v)
+        {
+            int newSpeed;
+            if (!Int32.TryParse(v, out newSpeed))
+            {
+                Echo("Wrong int " + v);
+                return;
+            }
+
+            Echo("Setup max speed");
+
+            var irs = new List<IMyRemoteControl>();
+            reScanObjectsLocal(irs, ir => ir.IsAutoPilotEnabled);
+            irs.ForEach(ir => ir.SpeedLimit = newSpeed);
         }
 
         public void cargoLoad(string group, String after)
@@ -143,7 +206,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             reScanObjectsLocal(blocks, b => b.HasInventory);
             var outerCargo = new List<IMyCargoContainer>();
             var needResources = new Dictionary<string, int>();
-            reScanObjects(outerCargo, b => b.HasInventory && b.CubeGrid != Me.CubeGrid);
+            reScanObjectsLocal(outerCargo, b => b.HasInventory);
 
             bool full = true;
             double need = 0, found = 0;
@@ -282,27 +345,15 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
         public void batteryLoad(String after)
         {
             Echo("batteryLoad");
-            List<IMyBatteryBlock> batteries = new List<IMyBatteryBlock>();
-            reScanObjectsLocal(batteries);
-            float curLoad;
-            if (batteries.Count > 0)
+            var curLoad = getGridBatteryCharge();
+            if (curLoad > BATTERY_MAX_LOAD)
             {
-                curLoad = 0;
-                foreach (var bat in batteries)
-                {
-                    curLoad += bat.CurrentStoredPower / bat.MaxStoredPower;
-                }
-                curLoad /= batteries.Count;
-
-                if (curLoad > BATTERY_MAX_LOAD)
-                {
-                    setAdditionalStatus("");
-                    runTbByName(after);
-                }
-                else
-                {
-                    setAdditionalStatus("B." + (int)(100 * curLoad) + "%");
-                }
+                setAdditionalStatus("");
+                runTbByName(after);
+            }
+            else
+            {
+                setAdditionalStatus("B." + (int)(100 * curLoad) + "%");
             }
         }
 
@@ -315,6 +366,46 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             List<IMyBatteryBlock> batteries = new List<IMyBatteryBlock>();
             reScanObjectsLocal(batteries);
             batteries.ForEach(bat => bat.ChargeMode = mode);
+        }
+
+        public Dictionary<string, int> getCurrentInventory()
+        {
+            List<IMyTerminalBlock> cargo_blocks = new List<IMyTerminalBlock>();
+            reScanObjectsLocal<IMyTerminalBlock>(cargo_blocks, b => b.HasInventory);
+            Dictionary<string, int> result = new Dictionary<string, int>();
+            var items = new List<MyInventoryItem>();
+            foreach (var block in cargo_blocks)
+            {
+                block.GetInventory(0).GetItems(items);
+                foreach (var item in items)
+                {
+                    var itemName = getName(item.Type);
+                    if (result.ContainsKey(itemName))
+                    {
+                        result[itemName] += (int)item.Amount;
+                    }
+                    else
+                    {
+                        result.Add(itemName, (int)item.Amount);
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        public string showInventory(Dictionary<string, int> items, int strsize)
+        {
+
+            string itemStr = "";
+
+            foreach (var i in items)
+            {
+                string t = new string(' ', strsize - i.Key.Split('.')[1].Length - i.Value.ToString().Length);
+                itemStr += i.Key.Split('.')[1] + " " + t + i.Value.ToString() + "\n";
+                //test strsize - add logic if itemStr larger than strsize
+            }
+            return itemStr;
         }
 
         public Program()
@@ -411,64 +502,14 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             //todo
             return result;
         }
-        public double percentOf(double current, double maximum)
-        {
-            return Math.Round(maximum == 0 ? 100 : 100 * current / maximum);
-        }
-
-        public delegate void OutAction<T>(T x, ref double a, ref double b);
-        public double getGridInfo<T>(OutAction<T> update, Func<T, bool> check = null) where T : class, IMyTerminalBlock
-        {
-            var objects = new List<T>();
-            double current_capacity = 0;
-            double max_capacity = 0;
-            if (check == null)
-            {
-                reScanObjectsLocal(objects);
-            }
-            else
-            {
-                reScanObjectsLocal(objects, check);
-            }
-
-            objects.ForEach((obj) => update(obj, ref current_capacity, ref max_capacity));
-
-            return percentOf(current_capacity, max_capacity);
-        }
-
-        public double getGridBatteryCharge()
-        {
-            return getGridInfo((IMyBatteryBlock batt, ref double current, ref double max) =>
-            {
-                current += batt.CurrentStoredPower;
-                max += batt.MaxStoredPower;
-            });
-        }
-
-        public double getGridGasAmount(string gasType)
-        {
-            return getGridInfo((IMyGasTank tank, ref double current, ref double max) =>
-            {
-                current += tank.Capacity * tank.FilledRatio;
-                max += tank.Capacity;
-            }, tank => tank.BlockDefinition.SubtypeId.Contains(gasType));
-        }
-
-        public double getGridUsedCargoSpace()
-        {
-            return getGridInfo((IMyCargoContainer cargo, ref double current, ref double max) =>
-            {
-                current += (double)cargo.GetInventory(0).CurrentVolume;
-                max += (double)cargo.GetInventory(0).MaxVolume;
-            });
-        }
 
         public double getGridVelocity()
         {
+			return 0; //sometimes zero controls
+
             double result = 0;
             List<IMyShipController> controls = new List<IMyShipController>();
             reScanObjectsLocal(controls);
-            return 0; //sometimes zero controls
             result = (double)controls[0].GetShipVelocities().LinearVelocity.Length();
             return result;
         }
@@ -535,10 +576,18 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
 
         public void Main(string arg)
         {
+            List<IMyTextPanel> infoDisplays = new List<IMyTextPanel>();
+            reScanObjectGroupLocal(infoDisplays, infoTag);
+            foreach (var display in infoDisplays)
+            {
+                display.WriteText(showInventory(getCurrentInventory(), 30));
+            }
+
             if (arg != "")
             {
-                //change parameters                
+                //change parameters
                 // .ToList<String>()
+                //todo myInit CustomData
 
                 if (arg.Contains("=")) //todo: remove
                 {
@@ -586,7 +635,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                     case "cargoLoad":
                         cargoLoad(props[1], props[2]);
                         break;
-                    case "maxSpeed":
+					case "maxSpeed":
                         maxSpeed(props[1]);
                         break;
                     case "connect":
@@ -681,7 +730,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                     events.Add(tmp);
                 }
 
-                statusMessage = "{\"Name\":\"" + Me.CubeGrid.CustomName + "\",\"Additional\":\"" + additionalStatus + "\",\"Status\":" + statusMessage;
+				statusMessage = "{\"Name\":\"" + Me.CubeGrid.CustomName + "\",\"Additional\":\"" + additionalStatus + "\",\"Status\":" + statusMessage;
 
                 statusMessage = statusMessage + ",\"Info\":[";
                 statusMessage = statusMessage + "{\"GasAmount\":" + getGridGasAmount("Hydrogen") + "},";
@@ -700,12 +749,12 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                     }
                     statusMessage = statusMessage.Remove(statusMessage.Length - 1) + "]";
                 }
-                // finish message
+                //finish message
                 statusMessage = statusMessage + "}";
-                //Echo(statusMessage);
+                Echo(statusMessage);
 
                 reScanObjectGroupLocal(status_displays, StatusTag);
-                status_displays.ForEach(display => display.WriteText(statusMessage));
+				status_displays.ForEach(display => display.WriteText(statusMessage));
                 reScanObjectGroupLocal(request_displays, RequestTag);
 
                 //Me.CustomData = statusMessage;
@@ -734,25 +783,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
 
             }
         }
-
-        private void maxSpeed(string v)
-        {
-            int newSpeed;
-            if (!Int32.TryParse(v, out newSpeed))
-            {
-                Echo("Wrong int " + v);
-                return;
-            }
-
-            Echo("Setup max speed");
-
-            var irs = new List<IMyRemoteControl>();
-            reScanObjectsLocal(irs, ir => ir.IsAutoPilotEnabled);
-            irs.ForEach(ir => ir.SpeedLimit = newSpeed);
-        }
-
-
         #region PreludeFooter
     }
 }
-#endregion
+#endregion#region Prelude
