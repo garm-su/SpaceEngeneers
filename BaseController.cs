@@ -60,6 +60,7 @@ namespace SpaceEngineers.UWBlockPrograms.Sorter
         HashSet<string> MainContainerTypes = new HashSet<string> { COMPONENT };
         HashSet<string> ResourcesContainerTypes = new HashSet<string> { ORE, INGOT, DATAPAD };
         HashSet<string> UserContainerTypes = new HashSet<string> { GUN, CONSUMABLE, };
+        HashSet<string> AmmoContainerTypes = new HashSet<string> { AMMO };
         List<String> BaseResoursesType = new List<String>() { ORE, INGOT };
         List<String> ProdResoursesType = new List<String>() { COMPONENT };
         List<String> ProdResoursesAMMO = new List<String>() { AMMO };
@@ -174,7 +175,7 @@ namespace SpaceEngineers.UWBlockPrograms.Sorter
 
         public Program()
         {
-            Runtime.UpdateFrequency = UpdateFrequency.Update1;
+            Runtime.UpdateFrequency = UpdateFrequency.Update10;
 
             foreach (var fc in factories) fc.connect(this);
         }
@@ -459,6 +460,8 @@ namespace SpaceEngineers.UWBlockPrograms.Sorter
                             if (skip_move) continue;
                             if (item.Type.TypeId == ORE && block is IMyRefinery) continue;
                             if (item.Type.TypeId == INGOT && block is IMyAssembler) continue;
+                            if (item.Type.TypeId == AMMO && block is IMyLargeTurretBase) continue;
+                            if (item.Type.TypeId == AMMO && block is IMyUserControllableGun) continue;
 
                             if (!block.CustomName.Contains(ComponentsTag) && MainContainerTypes.Contains(item.Type.TypeId))
                             {
@@ -489,6 +492,20 @@ namespace SpaceEngineers.UWBlockPrograms.Sorter
                             if (!block.CustomName.Contains(UserTag) && UserContainerTypes.Contains(item.Type.TypeId))
                             {
                                 foreach (var cargo in userCargos)
+                                {
+                                    destination = cargo.GetInventory();
+                                    if (!destination.IsFull && sourse.IsConnectedTo(destination))
+                                    {
+                                        sourse.TransferItemTo(destination, k, null, true);
+                                        moved++;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (!block.CustomName.Contains(AmmoTag) && AmmoContainerTypes.Contains(item.Type.TypeId))
+                            {
+                                foreach (var cargo in ammoCargos)
                                 {
                                     destination = cargo.GetInventory();
                                     if (!destination.IsFull && sourse.IsConnectedTo(destination))
