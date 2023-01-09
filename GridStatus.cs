@@ -29,14 +29,21 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
         List<IMyTerminalBlock> allTBlocks = new List<IMyTerminalBlock>();
         //all armor blocks - be defined
 
+        //connect,Коннектор Низ Таскалище 02,TB Handle Connect Таскалище 02
+        //Battery,TB Handle Start Таскалище 02
+        //cargoLoad,,TB Handle Start Таскалище 02
+        //maxSpeed,50
+
+
         //cargoLoad,,Таскало 01 TB handleCharged
         //cargoSave,
         //Battery,Таскало 01 TB handleCharged
-        //connect,Таскало 01 TB handleConnected
         //batteryCharge,Recharge
         //batteryCharge,Auto
         //MyObjectBuilder_Ore.Ice: 3000
-        //MyObjectBuilder_Ingot.Iron: 42000
+        //MyObjectBuilder_Ore.Iron: 43000
+        //MyObjectBuilder_Ore.Stone: 43000
+        //MyObjectBuilder_Ingot.Iron: 4000
         //MyObjectBuilder_Ore.Gold: 42000
         //MyObjectBuilder_Component.SteelPlate: 3000
         //MyObjectBuilder_AmmoMagazine.NATO_25x184mm: 3000
@@ -50,6 +57,8 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
 
         string statusChannelTag = "RDOStatusChannel";
         string commandChannelTag = "RDOCommandChannel";
+
+        string additionalStatus = "";
 
         bool setupcomplete = false;
         bool checkDestroyedBlocks = true;
@@ -105,7 +114,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
         {
             GridTerminalSystem.GetBlocksOfType<T>(result, item => item.CustomName.Contains(name));
         }
-        public void reScanObjectsLocal<T>(List<T> result, Func<IMyTerminalBlock, bool> check) where T : class, IMyTerminalBlock
+        public void reScanObjectsLocal<T>(List<T> result, Func<T, bool> check) where T : class, IMyTerminalBlock
         {
             GridTerminalSystem.GetBlocksOfType<T>(result, item => item.CubeGrid == Me.CubeGrid && check(item));
         }
@@ -117,7 +126,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
         {
             GridTerminalSystem.GetBlocksOfType<T>(result);
         }
-        public void reScanObjects<T>(List<T> result, Func<IMyTerminalBlock, bool> check) where T : class, IMyTerminalBlock
+        public void reScanObjects<T>(List<T> result, Func<T, bool> check) where T : class, IMyTerminalBlock
         {
             GridTerminalSystem.GetBlocksOfType<T>(result, check);
         }
@@ -134,7 +143,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             reScanObjectsLocal(blocks, b => b.HasInventory);
             var outerCargo = new List<IMyCargoContainer>();
             var needResources = new Dictionary<string, int>();
-            reScanObjectsLocal(outerCargo, b => b.HasInventory);
+            reScanObjects(outerCargo, b => b.HasInventory && b.CubeGrid != Me.CubeGrid);
 
             bool full = true;
             double need = 0, found = 0;
@@ -172,11 +181,12 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
 
             if (full)
             {
-                run(after);
+                setAdditionalStatus("");
+                runTbByName(after);
             }
             else
             {
-                print("C." + (int)(need == 0 ? 100 : 100 * found / need) + "%");
+                setAdditionalStatus("C." + (int)(need == 0 ? 100 : 100 * found / need) + "%");
             }
         }
 
@@ -245,14 +255,16 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                 connector.Connect();
                 if (connector.Status == MyShipConnectorStatus.Connected)
                 {
-                    run(tbName);
+                    runTbByName(tbName);
                     return;
                 }
             }
         }
 
-        public void print(String s)
+        public void setAdditionalStatus(String s)
         {
+            additionalStatus = s;
+
             var surface = Me.GetSurface(0);
             surface.Alignment = TextAlignment.CENTER;
             surface.FontColor = mainColor;
@@ -260,7 +272,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             surface.WriteText(s);
         }
 
-        public void run(String name)
+        public void runTbByName(String name)
         {
             var tbs = new List<IMyTimerBlock>();
             reScanObjectExactLocal(tbs, name);
@@ -282,10 +294,14 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                 }
                 curLoad /= batteries.Count;
 
-                print("B." + (int)(100 * curLoad) + "%");
                 if (curLoad > BATTERY_MAX_LOAD)
                 {
-                    run(after);
+                    setAdditionalStatus("");
+                    runTbByName(after);
+                }
+                else
+                {
+                    setAdditionalStatus("B." + (int)(100 * curLoad) + "%");
                 }
             }
         }
@@ -294,27 +310,11 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
         {
             Echo("batteryCharge: " + type);
             ChargeMode mode;
-            switch (type)
-            {
-                case "Recharge":
-                    mode = ChargeMode.Recharge;
-                    break;
-                case "Discharge":
-                    mode = ChargeMode.Discharge;
-                    break;
-                //.............
-                case "Auto":
-                    mode = ChargeMode.Auto;
-                    break;
-                default:
-                    return;
-            }
+            if (!Enum.TryParse(type, out mode)) return;
+
             List<IMyBatteryBlock> batteries = new List<IMyBatteryBlock>();
             reScanObjectsLocal(batteries);
-            foreach (var bat in batteries)
-            {
-                bat.ChargeMode = mode;
-            }
+            batteries.ForEach(bat => bat.ChargeMode = mode);
         }
 
         public Program()
@@ -411,49 +411,56 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             //todo
             return result;
         }
+        public double percentOf(double current, double maximum)
+        {
+            return Math.Round(maximum == 0 ? 100 : 100 * current / maximum);
+        }
+
+        public delegate void OutAction<T>(T x, ref double a, ref double b);
+        public double getGridInfo<T>(OutAction<T> update, Func<T, bool> check = null) where T : class, IMyTerminalBlock
+        {
+            var objects = new List<T>();
+            double current_capacity = 0;
+            double max_capacity = 0;
+            if (check == null)
+            {
+                reScanObjectsLocal(objects);
+            }
+            else
+            {
+                reScanObjectsLocal(objects, check);
+            }
+
+            objects.ForEach((obj) => update(obj, ref current_capacity, ref max_capacity));
+
+            return percentOf(current_capacity, max_capacity);
+        }
 
         public double getGridBatteryCharge()
         {
-            List<IMyBatteryBlock> batteries = new List<IMyBatteryBlock>();
-            reScanObjectsLocal(batteries);
-            float current_capacity = 0;
-            float max_capacity = 0;
-            foreach (IMyBatteryBlock b in batteries)
+            return getGridInfo((IMyBatteryBlock batt, ref double current, ref double max) =>
             {
-                current_capacity = current_capacity + b.CurrentStoredPower;
-                max_capacity = max_capacity + b.MaxStoredPower;
-            }
-            return Math.Round((max_capacity == 0 ? 1 : current_capacity / max_capacity) * 100);
+                current += batt.CurrentStoredPower;
+                max += batt.MaxStoredPower;
+            });
         }
 
-        public double getCurrentGasAmount(string gasType)
+        public double getGridGasAmount(string gasType)
         {
-            //gasType {"Oxygen","Hydrogen"}                                            
-            List<IMyGasTank> tanks = new List<IMyGasTank>();
-            reScanObjectsLocal(tanks, x => x.BlockDefinition.SubtypeId.Contains(gasType));
-            double current_amount = 0;
-            double max_capacity = 0;
-            foreach (IMyGasTank t in tanks)
+            return getGridInfo((IMyGasTank tank, ref double current, ref double max) =>
             {
-                current_amount += t.Capacity * t.FilledRatio;
-                max_capacity += t.Capacity;
-            }
-            return Math.Round((max_capacity == 0 ? 1 : current_amount / max_capacity) * 100);
+                current += tank.Capacity * tank.FilledRatio;
+                max += tank.Capacity;
+            }, tank => tank.BlockDefinition.SubtypeId.Contains(gasType));
         }
 
-        public double getUsedCargoSpace() //% of max
+        public double getGridUsedCargoSpace()
         {
-            double maxVolume = 0;
-            double currentVolume = 0;
-            List<IMyCargoContainer> cargos = new List<IMyCargoContainer>();
-            reScanObjectsLocal(cargos);
-            foreach (IMyCargoContainer container in cargos)
+            return getGridInfo((IMyCargoContainer cargo, ref double current, ref double max) =>
             {
-                maxVolume = maxVolume + (double)container.GetInventory(0).MaxVolume;
-                currentVolume = currentVolume + (double)container.GetInventory(0).CurrentVolume;
-            }
-
-            return Math.Round((maxVolume == 0 ? 1 : currentVolume / maxVolume) * 100);
+                current += (double)cargo.GetInventory(0).CurrentVolume;
+                max += (double)cargo.GetInventory(0).MaxVolume;
+            });
         }
 
         public double getGridVelocity()
@@ -461,6 +468,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             double result = 0;
             List<IMyShipController> controls = new List<IMyShipController>();
             reScanObjectsLocal(controls);
+            return 0; //sometimes zero controls
             result = (double)controls[0].GetShipVelocities().LinearVelocity.Length();
             return result;
         }
@@ -477,7 +485,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                 ftypes.Add("\"energy\"");
             }
             //check gas
-            if (getCurrentGasAmount("Hydrogen") < gasTreshold)
+            if (getGridGasAmount("Hydrogen") < gasTreshold)
             {
                 result = true;
                 ftypes.Add("\"gas\"");
@@ -578,6 +586,9 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                     case "cargoLoad":
                         cargoLoad(props[1], props[2]);
                         break;
+                    case "maxSpeed":
+                        maxSpeed(props[1]);
+                        break;
                     case "connect":
                         connect(props[1], props[2]);
                         break;
@@ -670,12 +681,12 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                     events.Add(tmp);
                 }
 
-                statusMessage = "{\"Name\":\"" + Me.CubeGrid.CustomName + "\",\"Status\":" + statusMessage;
+                statusMessage = "{\"Name\":\"" + Me.CubeGrid.CustomName + "\",\"Additional\":\"" + additionalStatus + "\",\"Status\":" + statusMessage;
 
                 statusMessage = statusMessage + ",\"Info\":[";
-                statusMessage = statusMessage + "{\"GasAmount\":" + getCurrentGasAmount("Hydrogen") + "},";
+                statusMessage = statusMessage + "{\"GasAmount\":" + getGridGasAmount("Hydrogen") + "},";
                 statusMessage = statusMessage + "{\"BatteryCharge\":" + getGridBatteryCharge() + "},";
-                statusMessage = statusMessage + "{\"CargoUsed\":" + getUsedCargoSpace() + "},";
+                statusMessage = statusMessage + "{\"CargoUsed\":" + getGridUsedCargoSpace() + "},";
                 statusMessage = statusMessage + "{\"Position\":\"" + getMyCoords() + "\"},";
                 statusMessage = statusMessage + "{\"Velocity\":" + getGridVelocity() + "}";
                 statusMessage = statusMessage + "]";
@@ -689,11 +700,12 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                     }
                     statusMessage = statusMessage.Remove(statusMessage.Length - 1) + "]";
                 }
-                //finish message
+                // finish message
                 statusMessage = statusMessage + "}";
-                Echo(statusMessage);
+                //Echo(statusMessage);
 
                 reScanObjectGroupLocal(status_displays, StatusTag);
+                status_displays.ForEach(display => display.WriteText(statusMessage));
                 reScanObjectGroupLocal(request_displays, RequestTag);
 
                 //Me.CustomData = statusMessage;
@@ -721,6 +733,22 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                 }
 
             }
+        }
+
+        private void maxSpeed(string v)
+        {
+            int newSpeed;
+            if (!Int32.TryParse(v, out newSpeed))
+            {
+                Echo("Wrong int " + v);
+                return;
+            }
+
+            Echo("Setup max speed");
+
+            var irs = new List<IMyRemoteControl>();
+            reScanObjectsLocal(irs, ir => ir.IsAutoPilotEnabled);
+            irs.ForEach(ir => ir.SpeedLimit = newSpeed);
         }
 
 
