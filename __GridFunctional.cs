@@ -71,7 +71,11 @@ namespace SpaceEngineers.UWBlockPrograms.GF
             double current_capacity = 0;
             double max_capacity = 0;
 
-            reScanObjectsLocal(objects, check);
+            if (check == null) {
+                reScanObjectsLocal(objects, check);
+            } else {
+                reScanObjectsLocal(objects);
+            }
 
             objects.ForEach((obj) => update(obj, ref current_capacity, ref max_capacity));
 

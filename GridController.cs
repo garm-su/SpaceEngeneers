@@ -160,8 +160,12 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             var objects = new List<T>();
             double current_capacity = 0;
             double max_capacity = 0;
-
-            reScanObjectsLocal(objects, check);
+            
+            if (check == null) {
+                reScanObjectsLocal(objects, check);
+            } else {
+                reScanObjectsLocal(objects);
+            }
 
             objects.ForEach((obj) => update(obj, ref current_capacity, ref max_capacity));
 
