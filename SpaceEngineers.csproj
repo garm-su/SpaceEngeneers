@@ -75,6 +75,10 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Examples/excav_os.cs" />
+    <Compile Include="__Json.cs" />
+    <Compile Include="__GridFunctional.cs" />
+    <Compile Include="__Log.cs" />
     <Compile Include="BaseController.cs" />
     <Compile Include="CarHelpers.cs" />
     <Compile Include="ShutdownEngines.cs" />
