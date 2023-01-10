@@ -71,8 +71,6 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
         int maxSpeed = 0;        
 
         //alert tresholds
-        double damagedBlockRatio = 0;
-        double destroyedAmount = 0;
         double energyTreshold = 0.25; //% of max capacity, default - 25%
         double gasTreshold = 0.25; //% of max capacity, default - 25%
         double uraniumTreshold = 0; //kg
@@ -82,7 +80,10 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
         double gridCharge = 0;
         double gridGas = 0;
         double gridLoad = 0;
+        double damagedBlockRatio = 0;
+        double destroyedAmount = 0;
         List<string> gridDamagedBlocks = new List<string>();
+        List<string> gridDestroyedBlocks = new List<string>();
         Dictionary<string, int> gridInventory = new Dictionary<string, int>();
         List<MyDetectedEntityInfo> targets = new List<MyDetectedEntityInfo>();
 
@@ -289,21 +290,16 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             });
         }
 
-        public string getEnemyTargetsData()
+        public JsonList getEnemyTargetsData()
         {
-            string result = "";
-            List<string> t = new List<string>();
+            JsonList result = new JsonList("Targets");
             foreach (MyDetectedEntityInfo target in targets)
             {
-                result = result + "{\"Name\":\"" + target.Name + "\",";
-                result = result + "\"Type\":\"" + target.Type.ToString() + "\",";
-                result = result + "\"Position\":\"" + target.Position.ToString() + "\"}";
-                t.Add(result);
-                result = "";
-            }
-            if (t.Count > 0)
-            {
-                result = "[" + String.Join(",", t) + "]";
+                var t = new JsonObject("");
+                t.Add(new JsonPrimitive("Name", target.Name));
+                t.Add(new JsonPrimitive("Type", target.Type.ToString()));
+                t.Add(new JsonPrimitive("Position", target.Position.ToString()));                
+                result.Add(t);
             }
             return result;
         }
@@ -334,65 +330,17 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
 
         public bool isAttacked()
         {
-            //is turrets locked and target is grid
-            List<IMyLargeTurretBase> turrets = new List<IMyLargeTurretBase>();
-            reScanObjects(turrets);
-            bool isTarget = false;
-            foreach (IMyLargeTurretBase t in turrets)
-            {
-                if (t.HasTarget)
-                {
-                    MyDetectedEntityInfo trg = t.GetTargetedEntity();
-                    if (trg.Type != MyDetectedEntityType.None || trg.Type != MyDetectedEntityType.FloatingObject || trg.Type != MyDetectedEntityType.Meteor || trg.Type != MyDetectedEntityType.Planet)
-                    {
-                        targets.Add(trg);
-                        isTarget = true;
-                    }
-                }
-            }
-            bool isLocked = false;
-            if (lockedState)
-            {        //lockedState initiate by cockpit, run PB with argument "locked"
-                isLocked = true;
-            }
-
+            bool isTargets = (targets.Count() > 0);
+            bool isLocked = lockedState;
             bool isLargeDamage = false;
-            //isLargeDamage = (damagedBlockRatio > (damageTreshold/100));
-
-            bool isDestroyedBlocks = false;
-            if (checkDestroyedBlocks)
-            {
-                List<IMyTerminalBlock> currentState = new List<IMyTerminalBlock>();
-                reScanObjectsLocal(currentState);
-                isDestroyedBlocks = currentState.Count() != allTBlocks.Count();
-                destroyedAmount = allTBlocks.Count() - currentState.Count();
-            }
-
+            //isLargeDamage = (damagedBlockRatio > damageTreshold);
+            bool isDestroyedBlocks = (destroyedAmount > 0);
             return (isTarget || isLocked || isLargeDamage || isDestroyedBlocks);
         }
 
-        public bool damaged(out JsonList result)
+/*        public bool damaged(out JsonList result)
         {
-            result = new JsonList("Blocks");
-            // List<string> result = new List<string>();
-            List<IMyTerminalBlock> grid = new List<IMyTerminalBlock>();
-
-            double damagedCounter = 0;
-
-            reScanObjectsLocal(grid);
-
-            foreach (IMyTerminalBlock terminalBlock in grid)
-            {
-                IMySlimBlock slimBlock = terminalBlock.CubeGrid.GetCubeBlock(terminalBlock.Position);
-                if (slimBlock.CurrentDamage > 0)
-                {
-                    damagedCounter++;
-                    result.Add(new JsonPrimitive("", terminalBlock.DisplayNameText));
-                }
-            }
-            damagedBlockRatio = damagedCounter / allTBlocks.Count();
-            return damagedCounter > 0;
-        }
+        }*/
 
         public bool isLowAmmo()
         {
@@ -418,13 +366,13 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             bool result = false;
             ftype = "";
             List<string> ftypes = new List<string>();
-            if (getGridBatteryCharge() < energyTreshold)
+            if (gridCharge < energyTreshold)
             {
                 result = true;
                 ftypes.Add("\"energy\"");
             }
             //todo: check gas if hydrogen thrusters or engines in grid
-            if (getGridGasAmount("Hydrogen") < gasTreshold)
+            if (gridGas < gasTreshold)
             {
                 result = true;
                 ftypes.Add("\"gas\"");
@@ -463,8 +411,150 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             surface.FontSize = 4;
             surface.WriteText(s);
         }
-        //===================================================================================
 
+        public string getStatus()
+        {
+                string statusMessage = "";
+                string ftype;
+                List<string> events = new List<string>();
+                var Status = new JsonObject("");
+                statusMessage = "green";
+                var statusEvents = new JsonList("Events");
+
+                if (isLowAmmo())
+                {
+                    //todo check what type of ammo need and how many, add to details
+                    statusMessage = "orange";
+                    var curEvent = new JsonObject("");
+                    statusEvents.Add(curEvent);
+                    curEvent.Add(new JsonPrimitive("Event", "lowAmmo"));
+                }
+
+                if (gridDamagedBlocks.Count() > 0)
+                {
+                    statusMessage = "orange";
+                    var curEvent = new JsonObject("");
+                    JsonList damagedJson = new JsonList("Blocks");;
+                    statusEvents.Add(curEvent);
+                    curEvent.Add(new JsonPrimitive("Event", "damaged"));
+                    foreach(var b in gridDamagedBlocks)
+                    {
+                        damagedJson.Add(new JsonPrimitive("", b.DisplayNameText));
+                    }
+                    curEvent.Add(damagedJson);
+                }
+
+                if (isLowFuel(out ftype))
+                {
+                    statusMessage = "orange";
+                    var curEvent = new JsonObject("");
+                    statusEvents.Add(curEvent);
+                    curEvent.Add(new JsonPrimitive("Event", "lowFuel"));
+                    curEvent.Add(new JsonPrimitive("fueltype", ftype));
+                }
+
+                if (isAttacked())
+                {
+                    statusMessage = "\"red\"";
+                    string tmp = "{\"Event\":\"underAttack\"";
+                    string t = "";
+                    if (lockedState)
+                    {
+                        tmp = tmp + ",\"Locked\": \"true\"";
+                    }
+                    if (damagedBlockRatio > 0)
+                    {
+                        tmp = tmp + ",\"Damaged\": " + (damagedBlockRatio * 100).ToString();
+                    }
+
+                    if (destroyedAmount > 0)
+                    {
+                        tmp = tmp + ",\"Destroyed\": " + destroyedAmount.ToString();
+                    }
+
+                    if(targets.Count() > 0)
+                    {
+                        statusEvents.Add(getEnemyTargetsData());
+                    }
+                }
+
+                Status.Add(new JsonPrimitive("Name", Me.CubeGrid.CustomName));
+                Status.Add(new JsonPrimitive("Additional", additionalStatus));
+                Status.Add(new JsonPrimitive("Status", statusMessage));
+                Status.Add(new JsonPrimitive("GasAmount", gridGas));
+                Status.Add(new JsonPrimitive("BatteryCharge", gridCharge));
+                Status.Add(new JsonPrimitive("CargoUsed", gridLoad));
+                Status.Add(new JsonObject("Position", Me.GetPosition()));
+                Status.Add(new JsonPrimitive("Velocity", getGridVelocity()));
+                if (statusEvents.Count > 0)
+                {
+                    Status.Add(statusEvents);
+                }
+
+                //finish message
+                statusMessage = Status.ToString(false);
+                Echo(statusMessage);
+
+        }
+
+        public MyDetectedEntityInfo updateTurretsTargets()
+        {
+            List<MyDetectedEntityInfo> result = new List<MyDetectedEntityInfo>();
+            List<IMyLargeTurretBase> turrets = new List<IMyLargeTurretBase>();
+            reScanObjects(turrets);
+            foreach (IMyLargeTurretBase t in turrets)
+            {
+                if (t.HasTarget)
+                {
+                    MyDetectedEntityInfo trg = t.GetTargetedEntity();
+                    result.Add(trg);
+                }
+            }
+            return result;
+        }
+
+        public List<string> updateDamagedBlocks()
+        {
+            List<string> result = new List<string>();
+            List<IMyTerminalBlock> grid = new List<IMyTerminalBlock>();
+            reScanObjectsLocal(grid);
+            foreach (IMyTerminalBlock terminalBlock in grid)
+            {
+                IMySlimBlock slimBlock = terminalBlock.CubeGrid.GetCubeBlock(terminalBlock.Position);
+                if (slimBlock.CurrentDamage > 0)
+                {
+                    result.Add(terminalBlock.DisplayNameText);
+                }
+            }
+            return result;
+        }
+
+        public List<string> updateDestroyedBlocks()
+        {
+            List<string> result = new List<string>();
+            if (checkDestroyedBlocks)
+            {
+                List<IMyTerminalBlock> currentState = new List<IMyTerminalBlock>();
+                reScanObjectsLocal(currentState);
+                destroyedAmount = allTBlocks.Count() - currentState.Count();
+                //if block in allBlocks and not in current state add Block.CustomName to result;
+            }
+            return result;
+        }
+
+        public void updateGridInfo()
+        {
+            gridCharge = getGridBatteryCharge();
+            gridGas = getGridGasAmount("Hydrogen");
+            gridLoad = getGridUsedCargoSpace();
+            gridInventory = getGridInventory();
+            targets = updateTurretsTargets();
+            gridDamagedBlocks = updateDamagedBlocks();
+            gridDestroyedBlocks = updateDestroyedBlocks();
+            damagedBlockRatio = gridDamagedBlocks.Count()/allTBlocks.Count();
+            destroyedAmount = gridDestroyedBlocks.Count();
+        }
+        //===================================================================================
 
         //------------------------- car helper -----------------------------------------------
         private void setMaxSpeed(string v)
@@ -799,99 +889,22 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             }
             else
             {
-                targets.Clear();
-                string statusMessage = "";
-                string ftype;
-                List<string> events = new List<string>();
+
                 List<IMyTextPanel> status_displays = new List<IMyTextPanel>();
                 List<IMyTextPanel> request_displays = new List<IMyTextPanel>();
 
-                var Status = new JsonObject("");
-
-                statusMessage = "green";
-                var statusEvents = new JsonList("Events");
-                if (isLowAmmo())
-                {
-                    //todo check what type of ammo need and how many, add to details
-                    statusMessage = "orange";
-                    var curEvent = new JsonObject("");
-                    statusEvents.Add(curEvent);
-                    curEvent.Add(new JsonPrimitive("Event", "lowAmmo"));
-                }
-
-                JsonList damagedJson;
-                if (damaged(out damagedJson))
-                {
-                    statusMessage = "orange";
-                    var curEvent = new JsonObject("");
-                    statusEvents.Add(curEvent);
-                    curEvent.Add(new JsonPrimitive("Event", "damaged"));
-                    curEvent.Add(damagedJson);
-                }
-                if (isLowFuel(out ftype))
-                {
-                    statusMessage = "orange";
-                    var curEvent = new JsonObject("");
-                    statusEvents.Add(curEvent);
-                    curEvent.Add(new JsonPrimitive("Event", "lowFuel"));
-                    curEvent.Add(new JsonPrimitive("fueltype", ftype));
-                }
-                if (isAttacked())
-                {
-                    statusMessage = "\"red\"";
-                    string tmp = "{\"Event\":\"underAttack\"";
-                    string t = "";
-                    if (lockedState)
-                    {
-                        tmp = tmp + ",\"Locked\": \"true\"";
-                    }
-                    if (damagedBlockRatio > 0)
-                    {
-                        tmp = tmp + ",\"Damaged\": " + (damagedBlockRatio * 100).ToString();
-                    }
-
-                    if (destroyedAmount > 0)
-                    {
-                        tmp = tmp + ",\"Destroyed\": " + destroyedAmount.ToString();
-                    }
-
-                    t = getEnemyTargetsData();
-                    if (t != "")
-                    {
-                        tmp = tmp + ",\"Targets\":" + t;
-                        tmp = tmp + "}";
-                    }
-                    events.Add(tmp);
-                }
-
-                Status.Add(new JsonPrimitive("Name", Me.CubeGrid.CustomName));
-                Status.Add(new JsonPrimitive("Additional", additionalStatus));
-                Status.Add(new JsonPrimitive("Status", statusMessage));
-                Status.Add(new JsonPrimitive("GasAmount", getGridGasAmount("Hydrogen")));
-                Status.Add(new JsonPrimitive("BatteryCharge", getGridBatteryCharge()));
-                Status.Add(new JsonPrimitive("CargoUsed", getGridUsedCargoSpace()));
-                Status.Add(new JsonObject("Position", Me.GetPosition()));
-                Status.Add(new JsonPrimitive("Velocity", getGridVelocity()));
-                if (statusEvents.Count > 0)
-                {
-                    Status.Add(statusEvents);
-                }
-
-                //finish message
-                statusMessage = Status.ToString(false);
-                Echo(statusMessage);
 
                 reScanObjectGroupLocal(status_displays, StatusTag);
-                status_displays.ForEach(display => display.WriteText(statusMessage));
                 reScanObjectGroupLocal(request_displays, RequestTag);
+                targets.Clear();
+                updateGridInfo();
+                string statusMessage = getStatus();
+                status_displays.ForEach(display => display.WriteText(statusMessage));
 
-                //Me.CustomData = statusMessage;
-                //string cmdTag = commandChannelTag + "." + Me.CubeGrid.CustomName;
                 //statusListener = IGC.RegisterBroadcastListener(statusChannelTag);
-
                 IGC.SendBroadcastMessage(statusChannelTag, statusMessage);
-                commandListener = IGC.RegisterBroadcastListener(commandChannelTag);
 
+                commandListener = IGC.RegisterBroadcastListener(commandChannelTag);
                 while (commandListener.HasPendingMessage)
                 {
                     string message;
@@ -912,6 +925,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             }
         }
 
+    // ---------------------------------------------------------- json parser ----------------------------------------------------
         interface IJsonNonPrimitive
         {
             void Add(JsonElement child);
