@@ -113,7 +113,7 @@ namespace SpaceEngineers.UWBlockPrograms.JSON
             {
                 var result = "";
                 if (Key != "")
-                    result = Key + (pretty ? ": " : ":");
+                    result = "\"" + Key + (pretty ? "\": " : "\":");
                 result += "[";
                 foreach (var jsonObj in Values)
                 {
@@ -234,7 +234,7 @@ namespace SpaceEngineers.UWBlockPrograms.JSON
             {
                 var result = "";
                 if (Key != "" && Key != null)
-                    result = Key + (pretty ? ": " : ":");
+                    result = "\"" + Key + (pretty ? "\": " : "\":");
                 result += "{";
                 foreach (var kvp in Value)
                 {
@@ -387,7 +387,7 @@ namespace SpaceEngineers.UWBlockPrograms.JSON
                     return "";
                 var result = "";
                 if (Key != "" && Key != null)
-                    result = Key + (pretty ? ": " : ":");
+                    result = "\"" + Key + (pretty ? "\": " : "\":");
 
                 if (Value != null)
                 {

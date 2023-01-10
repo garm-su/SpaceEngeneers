@@ -878,7 +878,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                 }
 
                 //finish message
-                statusMessage = Status.ToString();
+                statusMessage = Status.ToString(false);
                 Echo(statusMessage);
 
                 reScanObjectGroupLocal(status_displays, StatusTag);
@@ -889,7 +889,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                 //string cmdTag = commandChannelTag + "." + Me.CubeGrid.CustomName;
                 //statusListener = IGC.RegisterBroadcastListener(statusChannelTag);
 
-                IGC.SendBroadcastMessage(statusChannelTag, Status.ToString(pretty: false));
+                IGC.SendBroadcastMessage(statusChannelTag, statusMessage);
                 commandListener = IGC.RegisterBroadcastListener(commandChannelTag);
 
                 while (commandListener.HasPendingMessage)
@@ -968,7 +968,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             {
                 var result = "";
                 if (Key != "")
-                    result = Key + (pretty ? ": " : ":");
+                    result = "\"" + Key + (pretty ? "\": " : "\":");
                 result += "[";
                 foreach (var jsonObj in Values)
                 {
@@ -1089,7 +1089,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             {
                 var result = "";
                 if (Key != "" && Key != null)
-                    result = Key + (pretty ? ": " : ":");
+                    result = "\"" + Key + (pretty ? "\": " : "\":");
                 result += "{";
                 foreach (var kvp in Value)
                 {
@@ -1242,7 +1242,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                     return "";
                 var result = "";
                 if (Key != "" && Key != null)
-                    result = Key + (pretty ? ": " : ":");
+                    result = "\"" + Key + (pretty ? "\": " : "\":");
 
                 if (Value != null)
                 {
@@ -1289,37 +1289,27 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             enum JSONPart { KEY, KEYEND, VALUE, VALUEEND }
 
             private int LastCharIndex;
-            private IEnumerator<bool> Enumerator;
             public string Serialized { get; private set; }
-            public JsonElement Result { get; private set; }
             private bool ReadOnly;
-            private Func<bool> ShouldPause;
 
             public int Progress
             {
                 get
                 {
-                    if (Serialized.Length == 0) return 100;
+                    if (Serialized.Length == 0) return 999;
                     return 100 * Math.Max(0, LastCharIndex) / Serialized.Length;
                 }
             }
 
 
-            public JSON(string serialized, Func<bool> shouldPause, bool readOnly = true)
+            public JSON(string serialized, bool readOnly = true)
             {
                 Serialized = serialized;
-                Enumerator = Parse().GetEnumerator();
                 ReadOnly = readOnly;
-                ShouldPause = shouldPause;
             }
 
 
-            public bool ParsingComplete()
-            {
-                return !Enumerator.MoveNext();
-            }
-
-            public IEnumerable<bool> Parse()
+            public JsonElement Parse()
             {
                 LastCharIndex = -1;
                 JSONPart Expected = JSONPart.VALUE;
@@ -1427,15 +1417,12 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                     }
 
                     LastCharIndex = charIndex;
-                    //Console.WriteLine("Iteration done, CurrentJsonObject is: '" + CurrentNestedJsonObject.Key + "'");
-                    if (ShouldPause())
-                    {
-                        yield return false;
-                    }
                 }
-
-                Result = LastNestedJsonObject as JsonElement;
-                yield return true;
+                if (JsonStack.Count > 0)
+                {
+                    throw new ParseException("StackCount " + JsonStack.Count, LastCharIndex);
+                }
+                return LastNestedJsonObject as JsonElement;
             }
 
             private class ParseException : Exception

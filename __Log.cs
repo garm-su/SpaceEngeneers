@@ -71,7 +71,6 @@ namespace SpaceEngineers.UWBlockPrograms.LL
 
             public void write(String info)
             {
-                parent.Echo(info);
                 rescan();
                 if (logs.Count > 0 && logs[0].log == info)
                 {
