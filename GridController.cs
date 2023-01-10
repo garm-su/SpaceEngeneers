@@ -389,15 +389,17 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
 
         public string showInventory(Dictionary<string, int> items, int strsize)
         {
-            return ""; //todo: bug https://cloud.garm.work/s/d4wtW8qgxf6EcLQ/preview
-
             string itemStr = "";
-
             foreach (var i in items)
             {
-                string t = new string(' ', strsize - i.Key.Split('.')[1].Length - i.Value.ToString().Length);
-                itemStr += i.Key.Split('.')[1] + " " + t + i.Value.ToString() + "\n";
-                //test strsize - add logic if itemStr larger than strsize
+				int len = strsize - i.Key.Split('.')[1].Length - i.Value.ToString().Length;
+				itemStr += i.Key.Split('.')[1] + " ";
+				if (len >= 0)
+				{
+					string t = new string(' ', len);
+					 itemStr += t;
+				}
+				itemStr += i.Value.ToString() + "\n";
             }
             return itemStr;
         }
