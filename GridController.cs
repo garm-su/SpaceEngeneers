@@ -456,22 +456,12 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
 
                 if (isAttacked())
                 {
-                    statusMessage = "\"red\"";
-                    string tmp = "{\"Event\":\"underAttack\"";
-                    if (lockedState)
-                    {
-                        tmp = tmp + ",\"Locked\": \"true\"";
-                    }
-                    if (damagedBlockRatio > 0)
-                    {
-                        tmp = tmp + ",\"Damaged\": " + (damagedBlockRatio * 100).ToString();
-                    }
-
-                    if (destroyedAmount > 0)
-                    {
-                        tmp = tmp + ",\"Destroyed\": " + destroyedAmount.ToString();
-                    }
-
+                    statusMessage = "red";
+                    var curEvent = new JsonObject("");
+                    curEvent.Add(new JsonPrimitive("Event", "underAttack"));
+                    curEvent.Add(new JsonPrimitive("Locked", lockedState.ToString()));
+                    curEvent.Add(new JsonPrimitive("Damaged", damagedBlockRatio * 100));
+                    curEvent.Add(new JsonPrimitive("Destroyed", destroyedAmount));
                     if(targets.Count() > 0)
                     {
                         statusEvents.Add(getEnemyTargetsData());
