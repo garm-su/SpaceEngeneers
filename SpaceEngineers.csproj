@@ -83,7 +83,7 @@
     <Compile Include="CarHelpers.cs" />
     <Compile Include="ShutdownEngines.cs" />
     <Compile Include="IceBase.cs" />
-    <Compile Include="GridStatus.cs" />
+    <Compile Include="GridController.cs" />
     <Compile Include="StatusListener.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

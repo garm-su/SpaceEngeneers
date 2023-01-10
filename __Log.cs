@@ -26,11 +26,68 @@ namespace SpaceEngineers.UWBlockPrograms.LL
     {
         // Your code goes between the next #endregion and #region
         #endregion
-        class Log
+
+        string LogTag = "[LOG]";
+        int LogMaxCount = 100;
+
+        public void reScanObjectGroupLocal<T>(List<T> result, String name) where T : class, IMyTerminalBlock
         {
-            public Log(string LCD) { 
+            GridTerminalSystem.GetBlocksOfType<T>(result, item => item.CubeGrid == Me.CubeGrid && item.CustomName.Contains(name));
+        }
+
+        public class LogEntry
+        {
+            public string log;
+            public int count;
+
+            public LogEntry(string info)
+            {
+                log = info;
+                count = 1;
+            }
+
+            public void inc()
+            {
+                count++;
+            }
+            public override string ToString() => $"x{count}: {log}";
+        }
+
+        public class Log
+        {
+            List<IMyTextPanel> surfaces = new List<IMyTextPanel>();
+            private Program parent;
+            List<LogEntry> logs = new List<LogEntry>();
 
 
+            public void rescan()
+            {
+                parent.reScanObjectGroupLocal(surfaces, parent.LogTag);
+            }
+            public Log(Program program)
+            {
+                this.parent = program;
+            }
+
+            public void write(String info)
+            {
+                rescan();
+                if (logs.Count > 0 && logs[0].log == info)
+                {
+                    logs[0].inc();
+                }
+                else
+                {
+                    logs.Insert(0, new LogEntry(info));
+                }
+
+                if (logs.Count > parent.LogMaxCount)
+                {
+                    logs.RemoveRange(parent.LogMaxCount, logs.Count - parent.LogMaxCount);
+                }
+
+                var result = String.Join("\n", logs);
+                surfaces.ForEach((surface) => surface.WriteText(result));
             }
         }
 

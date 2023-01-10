@@ -459,6 +459,7 @@ namespace SpaceEngineers.UWBlockPrograms.Sorter
 
                             if (skip_move) continue;
                             if (item.Type.TypeId == ORE && block is IMyRefinery) continue;
+                            if (item.Type.TypeId == ORE && block is IMyGasGenerator) continue;
                             if (item.Type.TypeId == INGOT && block is IMyAssembler) continue;
                             if (item.Type.TypeId == AMMO && block is IMyLargeTurretBase) continue;
                             if (item.Type.TypeId == AMMO && block is IMyUserControllableGun) continue;

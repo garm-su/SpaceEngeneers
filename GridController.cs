@@ -53,6 +53,9 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
         const string StatusTag = "[STATUS]";
         const string RequestTag = "[REQUEST]";
         const string infoTag = "[INFO]";
+        string LogTag = "[LOG]";
+        int LogMaxCount = 100;
+
         const double BATTERY_MAX_LOAD = 0.95;
         Color mainColor = new Color(0, 255, 0);
 
@@ -79,6 +82,64 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
 
         IMyBroadcastListener commandListener;
         IMyBroadcastListener statusListener;
+
+        public class LogEntry
+        {
+            public string log;
+            public int count;
+
+            public LogEntry(string info)
+            {
+                log = info;
+                count = 1;
+            }
+
+            public void inc()
+            {
+                count++;
+            }
+            public override string ToString() => $"x{count}: {log}";
+        }
+
+        public class Log
+        {
+            List<IMyTextPanel> surfaces = new List<IMyTextPanel>();
+            private Program parent;
+            List<LogEntry> logs = new List<LogEntry>();
+
+
+            public void rescan()
+            {
+                parent.reScanObjectGroupLocal(surfaces, parent.LogTag);
+            }
+            public Log(Program program)
+            {
+                this.parent = program;
+            }
+
+            public void write(String info)
+            {
+                rescan();
+                if (logs.Count > 0 && logs[0].log == info)
+                {
+                    logs[0].inc();
+                }
+                else
+                {
+                    logs.Insert(0, new LogEntry(info));
+                }
+
+                if (logs.Count > parent.LogMaxCount)
+                {
+                    logs.RemoveRange(parent.LogMaxCount, logs.Count - parent.LogMaxCount);
+                }
+
+                var result = String.Join("\n", logs);
+                surfaces.ForEach((surface) => surface.WriteText(result));
+            }
+        }
+
+        Log logger;
 
         public class DefaultDictionary<TKey, TValue> : Dictionary<TKey, TValue> where TValue : new()
         {
@@ -161,9 +222,12 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             double current_capacity = 0;
             double max_capacity = 0;
 
-            if (check == null) {
+            if (check == null)
+            {
                 reScanObjectsLocal(objects);
-            } else {
+            }
+            else
+            {
                 reScanObjectsLocal(objects, check);
             }
 
@@ -214,7 +278,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                 return;
             }
 
-            Echo("Setup max speed");
+            logger.write("Setup max speed");
 
             var irs = new List<IMyRemoteControl>();
             reScanObjectsLocal(irs, ir => ir.IsAutoPilotEnabled);
@@ -223,12 +287,20 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
 
         public void cargoLoad(string group, String after)
         {
-            Echo("cargoLoad: " + group);
+            logger.write("cargoLoad: " + group);
             var blocks = new List<IMyTerminalBlock>();
             reScanObjectsLocal(blocks, b => b.HasInventory);
-            var outerCargo = new List<IMyCargoContainer>();
             var needResources = new Dictionary<string, int>();
-            reScanObjectsLocal(outerCargo, b => b.HasInventory);
+
+            var outerCargo = new List<IMyCargoContainer>();
+            reScanObjects(outerCargo, b => b.CubeGrid != Me.CubeGrid);
+            if (outerCargo.Count == 0)
+            {
+                logger.write("No external cargos");
+                return;
+            }
+
+
 
             bool full = true;
             double need = 0, found = 0;
@@ -236,7 +308,9 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             foreach (var block in blocks)
             {
                 reReadConfig(needResources, block.CustomData);
-                need += needResources.Values.Sum();
+                var needResCount = needResources.Values.Sum();
+                if (needResCount == 0) continue;
+                need += needResCount;
                 var items = new List<MyInventoryItem>();
                 for (int j = 0; j < block.InventoryCount; j++)
                 {
@@ -259,7 +333,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                 );
                 if (!currentfull)
                 {
-                    Echo("NotFull: " + block.CustomName);
+                    logger.write("NotFull: " + block.CustomName);
                 }
                 full &= currentfull;
             }
@@ -277,7 +351,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
 
         private bool moveResources(List<IMyCargoContainer> outerCargo, IMyTerminalBlock block, Dictionary<string, int> dictionary)
         {
-            Echo("Move to " + block.CustomName + " " + dictionary.Keys.Count());
+            logger.write("Move to " + dictionary.Keys.Count() + " " + outerCargo.Count() + " " + block.CustomName);
             if (!block.HasInventory || dictionary.Count == 0) return true;
             IMyInventory sourse, destination = block.GetInventory();
             if (destination.IsFull) return true;
@@ -310,7 +384,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
 
         public void cargoSave(string group)
         {
-            Echo("cargoSave: " + group);
+            logger.write("cargoSave: " + group);
             var blocks = new List<IMyTerminalBlock>();
             reScanObjectsLocal(blocks, b => b.HasInventory);
             var info = new List<String>();
@@ -334,7 +408,8 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
         public void connect(String connectorName, String tbName)
         {
             var blocks = new List<IMyShipConnector>();
-            reScanObjectsLocal(blocks, b => b.HasInventory);
+            reScanObjectExactLocal(blocks, connectorName);
+            logger.write("Connect \"" + connectorName + "\" (" + blocks.Count + ")");
             foreach (var connector in blocks)
             {
                 connector.Connect();
@@ -366,7 +441,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
 
         public void batteryLoad(String after)
         {
-            Echo("batteryLoad");
+            logger.write("batteryLoad");
             var curLoad = getGridBatteryCharge();
             if (curLoad > BATTERY_MAX_LOAD)
             {
@@ -381,7 +456,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
 
         public void batteryCharge(string type)
         {
-            Echo("batteryCharge: " + type);
+            logger.write("batteryCharge: " + type);
             ChargeMode mode;
             if (!Enum.TryParse(type, out mode)) return;
 
@@ -426,6 +501,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
         public Program()
         {
             // Set the script to run every 100 ticks, so no timer needed.
+            logger = new Log(this);
             Runtime.UpdateFrequency = UpdateFrequency.Update100;
         }
 
@@ -591,6 +667,9 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
 
         public void Main(string arg)
         {
+            logger.write("Main " + arg);
+            if (arg.StartsWith(LogTag)) return;
+
             List<IMyTextPanel> infoDisplays = new List<IMyTextPanel>();
             reScanObjectGroupLocal(infoDisplays, infoTag);
             foreach (var display in infoDisplays)
