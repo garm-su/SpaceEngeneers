@@ -53,7 +53,8 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
         const string StatusTag = "[STATUS]";
         const string RequestTag = "[REQUEST]";
         const string infoTag = "[INFO]";
-        const string LogTag = "[LOG]";
+        
+        string LogTag = "[LOG]";
         const double BATTERY_MAX_LOAD = 0.95;
 
         Color mainColor = new Color(0, 255, 0);
@@ -335,7 +336,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             bool isLargeDamage = false;
             //isLargeDamage = (damagedBlockRatio > damageTreshold);
             bool isDestroyedBlocks = (destroyedAmount > 0);
-            return (isTarget || isLocked || isLargeDamage || isDestroyedBlocks);
+            return (isTargets || isLocked || isLargeDamage || isDestroyedBlocks);
         }
 
 /*        public bool damaged(out JsonList result)
@@ -439,7 +440,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                     curEvent.Add(new JsonPrimitive("Event", "damaged"));
                     foreach(var b in gridDamagedBlocks)
                     {
-                        damagedJson.Add(new JsonPrimitive("", b.DisplayNameText));
+                        damagedJson.Add(new JsonPrimitive("", b));
                     }
                     curEvent.Add(damagedJson);
                 }
@@ -457,7 +458,6 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                 {
                     statusMessage = "\"red\"";
                     string tmp = "{\"Event\":\"underAttack\"";
-                    string t = "";
                     if (lockedState)
                     {
                         tmp = tmp + ",\"Locked\": \"true\"";
@@ -494,10 +494,11 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                 //finish message
                 statusMessage = Status.ToString(false);
                 Echo(statusMessage);
+                return statusMessage;
 
         }
 
-        public MyDetectedEntityInfo updateTurretsTargets()
+        public List<MyDetectedEntityInfo> updateTurretsTargets()
         {
             List<MyDetectedEntityInfo> result = new List<MyDetectedEntityInfo>();
             List<IMyLargeTurretBase> turrets = new List<IMyLargeTurretBase>();
