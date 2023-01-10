@@ -48,43 +48,55 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
         //MyObjectBuilder_Component.SteelPlate: 3000
         //MyObjectBuilder_AmmoMagazine.NATO_25x184mm: 3000
 
-
+        //Tags
         const string SKIP = "[SKIP]";
         const string StatusTag = "[STATUS]";
         const string RequestTag = "[REQUEST]";
         const string infoTag = "[INFO]";
-        string LogTag = "[LOG]";
-        int LogMaxCount = 100;
-
+        const string LogTag = "[LOG]";
         const double BATTERY_MAX_LOAD = 0.95;
+
         Color mainColor = new Color(0, 255, 0);
 
         string statusChannelTag = "RDOStatusChannel";
         string commandChannelTag = "RDOCommandChannel";
-
         string additionalStatus = "";
+        List<string> actions = new List<string>();
 
         bool setupcomplete = false;
         bool checkDestroyedBlocks = true;
         bool lockedState = false;
+
+        int LogMaxCount = 100;
+        int maxSpeed = 0;        
+
+        //alert tresholds
         double damagedBlockRatio = 0;
         double destroyedAmount = 0;
+        double energyTreshold = 0.25; //% of max capacity, default - 25%
+        double gasTreshold = 0.25; //% of max capacity, default - 25%
+        double uraniumTreshold = 0; //kg
+        double damageTreshold = 0.2; //% of terminal blocks, default - 20%
 
-        int energyTreshold = 25; //% of max capacity, default - 25%
-        int gasTreshold = 25; //% of max capacity, default - 25%
-        int uraniumTreshold = 0; //kg
-        int damageTreshold = 20; //% of terminal blocks, default - 20%
-
-        List<IMyRadioAntenna> antenna = new List<IMyRadioAntenna>();
+        //grid info
+        double gridCharge = 0;
+        double gridGas = 0;
+        double gridLoad = 0;
+        List<string> gridDamagedBlocks = new List<string>();
+        Dictionary<string, int> gridInventory = new Dictionary<string, int>();
         List<MyDetectedEntityInfo> targets = new List<MyDetectedEntityInfo>();
+
+        //item order
         Dictionary<string, int> ammoDefaultAmount = new Dictionary<string, int>(); //subtype_id, ammount
         Dictionary<string, int> itemsDefaultAmount = new Dictionary<string, int>(); //subtype_id, ammount - not ammo
+
+        List<IMyRadioAntenna> antenna = new List<IMyRadioAntenna>();
 
         IMyBroadcastListener commandListener;
         IMyBroadcastListener statusListener;
 
-        int maxSpeed = 0;
 
+        //---------------------------logger--------------------------------------------
         public class LogEntry
         {
             public string log;
@@ -160,7 +172,17 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                 set { base[key] = value; }
             }
         }
+        //--------------------------------- logger end -------------------------------------------------
 
+        //--------------------------------- rescan and config functions --------------------------------
+        public void parseArgs(string args)
+        {
+            //todo - move parse args here
+            actions.Clear();
+
+            //actions
+        }
+        
         public void reReadConfig(Dictionary<string, int> minResourses, String CustomData)
         {
             minResourses.Clear();
@@ -212,10 +234,12 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
         {
             GridTerminalSystem.GetBlocksOfType<T>(result, check);
         }
+        //-----------------------------------------------------------------
 
+        //---------------------------- grid status info ----------------------------------
         public double percentOf(double current, double maximum)
         {
-            return Math.Round(maximum == 0 ? 100 : 100 * current / maximum);
+            return (maximum == 0 ? 1 : 1 * current / maximum);
         }
         public delegate void OutAction<T>(T x, ref double a, ref double b);
         public double getGridInfo<T>(OutAction<T> update, Func<T, bool> check = null) where T : class, IMyTerminalBlock
@@ -265,12 +289,184 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             });
         }
 
+        public string getEnemyTargetsData()
+        {
+            string result = "";
+            List<string> t = new List<string>();
+            foreach (MyDetectedEntityInfo target in targets)
+            {
+                result = result + "{\"Name\":\"" + target.Name + "\",";
+                result = result + "\"Type\":\"" + target.Type.ToString() + "\",";
+                result = result + "\"Position\":\"" + target.Position.ToString() + "\"}";
+                t.Add(result);
+                result = "";
+            }
+            if (t.Count > 0)
+            {
+                result = "[" + String.Join(",", t) + "]";
+            }
+            return result;
+        }
 
         private string getName(MyItemType type)
         {
             return type.TypeId + '.' + type.SubtypeId;
         }
 
+        public Dictionary<string, int> getGridInventory()
+        {
+            var cargo_blocks = new List<IMyTerminalBlock>();
+            reScanObjectsLocal(cargo_blocks, b => b.HasInventory);
+            var result = new DefaultDictionary<string, int>();
+            var items = new List<MyInventoryItem>();
+            foreach (var block in cargo_blocks)
+            {
+                items.Clear();
+                block.GetInventory(0).GetItems(items);
+                foreach (var item in items)
+                {
+                    result[getName(item.Type)] += (int)item.Amount;
+                }
+            }
+
+            return result;
+        }
+
+        public bool isAttacked()
+        {
+            //is turrets locked and target is grid
+            List<IMyLargeTurretBase> turrets = new List<IMyLargeTurretBase>();
+            reScanObjects(turrets);
+            bool isTarget = false;
+            foreach (IMyLargeTurretBase t in turrets)
+            {
+                if (t.HasTarget)
+                {
+                    MyDetectedEntityInfo trg = t.GetTargetedEntity();
+                    if (trg.Type != MyDetectedEntityType.None || trg.Type != MyDetectedEntityType.FloatingObject || trg.Type != MyDetectedEntityType.Meteor || trg.Type != MyDetectedEntityType.Planet)
+                    {
+                        targets.Add(trg);
+                        isTarget = true;
+                    }
+                }
+            }
+            bool isLocked = false;
+            if (lockedState)
+            {        //lockedState initiate by cockpit, run PB with argument "locked"
+                isLocked = true;
+            }
+
+            bool isLargeDamage = false;
+            //isLargeDamage = (damagedBlockRatio > (damageTreshold/100));
+
+            bool isDestroyedBlocks = false;
+            if (checkDestroyedBlocks)
+            {
+                List<IMyTerminalBlock> currentState = new List<IMyTerminalBlock>();
+                reScanObjectsLocal(currentState);
+                isDestroyedBlocks = currentState.Count() != allTBlocks.Count();
+                destroyedAmount = allTBlocks.Count() - currentState.Count();
+            }
+
+            return (isTarget || isLocked || isLargeDamage || isDestroyedBlocks);
+        }
+
+        public bool damaged(out JsonList result)
+        {
+            result = new JsonList("Blocks");
+            // List<string> result = new List<string>();
+            List<IMyTerminalBlock> grid = new List<IMyTerminalBlock>();
+
+            double damagedCounter = 0;
+
+            reScanObjectsLocal(grid);
+
+            foreach (IMyTerminalBlock terminalBlock in grid)
+            {
+                IMySlimBlock slimBlock = terminalBlock.CubeGrid.GetCubeBlock(terminalBlock.Position);
+                if (slimBlock.CurrentDamage > 0)
+                {
+                    damagedCounter++;
+                    result.Add(new JsonPrimitive("", terminalBlock.DisplayNameText));
+                }
+            }
+            damagedBlockRatio = damagedCounter / allTBlocks.Count();
+            return damagedCounter > 0;
+        }
+
+        public bool isLowAmmo()
+        {
+            bool result = false;
+            //todo
+            return result;
+        }
+
+        public double getGridVelocity()
+        {
+            double result = 0;
+            List<IMyShipController> controls = new List<IMyShipController>();
+            reScanObjectsLocal(controls);
+            if(controls.Count() > 0)
+            {
+                result = (double)controls[0].GetShipVelocities().LinearVelocity.Length();
+            }
+            return result;
+        }
+
+        public bool isLowFuel(out string ftype)
+        {
+            bool result = false;
+            ftype = "";
+            List<string> ftypes = new List<string>();
+            if (getGridBatteryCharge() < energyTreshold)
+            {
+                result = true;
+                ftypes.Add("\"energy\"");
+            }
+            //todo: check gas if hydrogen thrusters or engines in grid
+            if (getGridGasAmount("Hydrogen") < gasTreshold)
+            {
+                result = true;
+                ftypes.Add("\"gas\"");
+            }
+            //todo check uranium (if reactors)
+
+            if (ftypes.Count > 0)
+            {
+                ftype = "[" + String.Join(",", ftypes) + "]";
+            }
+            return result;
+        }        
+
+        public string showInventory(Dictionary<string, int> items, int strsize)
+        {
+            return ""; //todo: bug https://cloud.garm.work/s/d4wtW8qgxf6EcLQ/preview
+
+            string itemStr = "";
+
+            foreach (var i in items)
+            {
+                string t = new string(' ', strsize - i.Key.Split('.')[1].Length - i.Value.ToString().Length);
+                itemStr += i.Key.Split('.')[1] + " " + t + i.Value.ToString() + "\n";
+                //test strsize - add logic if itemStr larger than strsize
+            }
+            return itemStr;
+        }
+
+        public void setAdditionalStatus(String s)
+        {
+            additionalStatus = s;
+
+            var surface = Me.GetSurface(0);
+            surface.Alignment = TextAlignment.CENTER;
+            surface.FontColor = mainColor;
+            surface.FontSize = 4;
+            surface.WriteText(s);
+        }
+        //===================================================================================
+
+
+        //------------------------- car helper -----------------------------------------------
         private void setMaxSpeed(string v)
         {
             int newSpeed;
@@ -317,8 +513,6 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                 logger.write("No external cargos");
                 return;
             }
-
-
 
             bool full = true;
             double need = 0, found = 0;
@@ -439,17 +633,6 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             }
         }
 
-        public void setAdditionalStatus(String s)
-        {
-            additionalStatus = s;
-
-            var surface = Me.GetSurface(0);
-            surface.Alignment = TextAlignment.CENTER;
-            surface.FontColor = mainColor;
-            surface.FontSize = 4;
-            surface.WriteText(s);
-        }
-
         public void runTbByName(String name)
         {
             var tbs = new List<IMyTimerBlock>();
@@ -483,177 +666,14 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             batteries.ForEach(bat => bat.ChargeMode = mode);
         }
 
-        public Dictionary<string, int> getGridInventory()
-        {
-            var cargo_blocks = new List<IMyTerminalBlock>();
-            reScanObjectsLocal(cargo_blocks, b => b.HasInventory);
-            var result = new DefaultDictionary<string, int>();
-            var items = new List<MyInventoryItem>();
-            foreach (var block in cargo_blocks)
-            {
-                items.Clear();
-                block.GetInventory(0).GetItems(items);
-                foreach (var item in items)
-                {
-                    result[getName(item.Type)] += (int)item.Amount;
-                }
-            }
+        //===========================================================================================
 
-            return result;
-        }
-
-        public string showInventory(Dictionary<string, int> items, int strsize)
-        {
-            return ""; //todo: bug https://cloud.garm.work/s/d4wtW8qgxf6EcLQ/preview
-
-            string itemStr = "";
-
-            foreach (var i in items)
-            {
-                string t = new string(' ', strsize - i.Key.Split('.')[1].Length - i.Value.ToString().Length);
-                itemStr += i.Key.Split('.')[1] + " " + t + i.Value.ToString() + "\n";
-                //test strsize - add logic if itemStr larger than strsize
-            }
-            return itemStr;
-        }
-
-        public Program()
-        {
-            // Set the script to run every 100 ticks, so no timer needed.
-            logger = new Log(this);
-            Runtime.UpdateFrequency = UpdateFrequency.Update100;
-        }
-
+        //------------------------------------ arg commands ------------------------------------------
         public void fixGridState()
         {
             reScanObjectsLocal(allTBlocks);
             //todo save armor block state
 
-        }
-
-        public bool isAttacked()
-        {
-            //is turrets locked and target is grid
-            List<IMyLargeTurretBase> turrets = new List<IMyLargeTurretBase>();
-            reScanObjects(turrets);
-            bool isTarget = false;
-            foreach (IMyLargeTurretBase t in turrets)
-            {
-                if (t.HasTarget)
-                {
-                    MyDetectedEntityInfo trg = t.GetTargetedEntity();
-                    if (trg.Type != MyDetectedEntityType.None || trg.Type != MyDetectedEntityType.FloatingObject || trg.Type != MyDetectedEntityType.Meteor || trg.Type != MyDetectedEntityType.Planet)
-                    {
-                        targets.Add(trg);
-                        isTarget = true;
-                    }
-                }
-            }
-            bool isLocked = false;
-            if (lockedState)
-            {        //lockedState initiate by cockpit, run PB with argument "locked"
-                isLocked = true;
-            }
-
-            bool isLargeDamage = false;
-            //isLargeDamage = (damagedBlockRatio > (damageTreshold/100));
-
-            bool isDestroyedBlocks = false;
-            if (checkDestroyedBlocks)
-            {
-                List<IMyTerminalBlock> currentState = new List<IMyTerminalBlock>();
-                reScanObjectsLocal(currentState);
-                isDestroyedBlocks = currentState.Count() != allTBlocks.Count();
-                destroyedAmount = allTBlocks.Count() - currentState.Count();
-            }
-
-            return (isTarget || isLocked || isLargeDamage || isDestroyedBlocks);
-        }
-
-        public bool damaged(out JsonList result)
-        {
-            result = new JsonList("Blocks");
-            // List<string> result = new List<string>();
-            List<IMyTerminalBlock> grid = new List<IMyTerminalBlock>();
-
-            double damagedCounter = 0;
-
-            reScanObjectsLocal(grid);
-
-            foreach (IMyTerminalBlock terminalBlock in grid)
-            {
-                IMySlimBlock slimBlock = terminalBlock.CubeGrid.GetCubeBlock(terminalBlock.Position);
-                if (slimBlock.CurrentDamage > 0)
-                {
-                    damagedCounter++;
-                    result.Add(new JsonPrimitive("", terminalBlock.DisplayNameText));
-                }
-            }
-            damagedBlockRatio = damagedCounter / allTBlocks.Count();
-            return damagedCounter > 0;
-        }
-
-        public bool isLowAmmo()
-        {
-            bool result = false;
-            //todo
-            return result;
-        }
-
-        public double getGridVelocity()
-        {
-            return 0; //sometimes zero controls
-
-            double result = 0;
-            List<IMyShipController> controls = new List<IMyShipController>();
-            reScanObjectsLocal(controls);
-            result = (double)controls[0].GetShipVelocities().LinearVelocity.Length();
-            return result;
-        }
-
-        public bool isLowFuel(out string ftype)
-        {
-            bool result = false;
-            //check battery charges
-            ftype = "";
-            List<string> ftypes = new List<string>();
-            if (getGridBatteryCharge() < energyTreshold)
-            {
-                result = true;
-                ftypes.Add("\"energy\"");
-            }
-            //check gas
-            if (getGridGasAmount("Hydrogen") < gasTreshold)
-            {
-                result = true;
-                ftypes.Add("\"gas\"");
-            }
-            //todo check uranium (if reactors)
-
-            if (ftypes.Count > 0)
-            {
-                ftype = "[" + String.Join(",", ftypes) + "]";
-            }
-            return result;
-        }
-
-        public string getEnemyTargetsData()
-        {
-            string result = "";
-            List<string> t = new List<string>();
-            foreach (MyDetectedEntityInfo target in targets)
-            {
-                result = result + "{\"Name\":\"" + target.Name + "\",";
-                result = result + "\"Type\":\"" + target.Type.ToString() + "\",";
-                result = result + "\"Position\":\"" + target.Position.ToString() + "\"}";
-                t.Add(result);
-                result = "";
-            }
-            if (t.Count > 0)
-            {
-                result = "[" + String.Join(",", t) + "]";
-            }
-            return result;
         }
 
         public void Setup()
@@ -669,6 +689,13 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             {
                 Echo("Setup failed. No antenna found");
             }
+        }
+
+        public Program()
+        {
+            // Set the script to run every 100 ticks, so no timer needed.
+            logger = new Log(this);
+            Runtime.UpdateFrequency = UpdateFrequency.Update100;
         }
 
         public void Main(string arg)
