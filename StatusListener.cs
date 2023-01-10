@@ -50,7 +50,7 @@ namespace SpaceEngineers.UWBlockPrograms.StatusListener
             {
                 if (info.ContainsKey("Status"))
                 {
-                    status = info["Status"].ToString();
+                    status = ((JsonPrimitive)info["Status"]).GetValue<string>();
                 }
 
                 if (info.ContainsKey("Position"))
@@ -121,7 +121,8 @@ namespace SpaceEngineers.UWBlockPrograms.StatusListener
         public void Use(JsonObject jsonData)
         {
             if (!jsonData.ContainsKey("Name")) return;
-            var name = jsonData["Name"].ToString();
+
+            var name = ((JsonPrimitive)jsonData["Name"]).GetValue<string>();
             ObjectInfo obj;
 
             if (nameToObject.ContainsKey(name))
