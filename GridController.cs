@@ -83,6 +83,8 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
         IMyBroadcastListener commandListener;
         IMyBroadcastListener statusListener;
 
+        int maxSpeed = 0;
+
         public class LogEntry
         {
             public string log;
@@ -269,7 +271,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             return type.TypeId + '.' + type.SubtypeId;
         }
 
-        private void maxSpeed(string v)
+        private void setMaxSpeed(string v)
         {
             int newSpeed;
             if (!Int32.TryParse(v, out newSpeed))
@@ -278,11 +280,27 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                 return;
             }
 
+            maxSpeed = newSpeed;
+
             logger.write("Setup max speed");
 
             var irs = new List<IMyRemoteControl>();
             reScanObjectsLocal(irs, ir => ir.IsAutoPilotEnabled);
             irs.ForEach(ir => ir.SpeedLimit = newSpeed);
+        }
+
+        public void checkMaxSpeed()
+        {
+            var irs = new List<IMyRemoteControl>();
+            reScanObjectsLocal(irs, ir => ir.IsAutoPilotEnabled);
+            if (irs.Count != 1) return;
+            var rc = irs[0];
+
+            var distance = (Me.CubeGrid.GridIntegerToWorld(Me.Position) - rc.CurrentWaypoint.Coords).Length();
+            if (distance < 90)
+            {
+                rc.SpeedLimit = (float)(maxSpeed * (distance + 10) / 100);
+            }
         }
 
         public void cargoLoad(string group, String after)
@@ -486,6 +504,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
 
         public string showInventory(Dictionary<string, int> items, int strsize)
         {
+            return ""; //todo: bug https://cloud.garm.work/s/d4wtW8qgxf6EcLQ/preview
 
             string itemStr = "";
 
@@ -510,13 +529,6 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             reScanObjectsLocal(allTBlocks);
             //todo save armor block state
 
-        }
-
-        public string getMyCoords()
-        {
-            string result = "";
-            result = Me.GetPosition().ToString();
-            return result;
         }
 
         public bool isAttacked()
@@ -558,10 +570,10 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             return (isTarget || isLocked || isLargeDamage || isDestroyedBlocks);
         }
 
-        public string getDamagedBlocks()
+        public bool damaged(out JsonList result)
         {
-            List<string> result = new List<string>();
-            List<IMySlimBlock> slim = new List<IMySlimBlock>();
+            result = new JsonList("Blocks");
+            // List<string> result = new List<string>();
             List<IMyTerminalBlock> grid = new List<IMyTerminalBlock>();
 
             double damagedCounter = 0;
@@ -571,20 +583,14 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             foreach (IMyTerminalBlock terminalBlock in grid)
             {
                 IMySlimBlock slimBlock = terminalBlock.CubeGrid.GetCubeBlock(terminalBlock.Position);
-                slim.Add(slimBlock);
                 if (slimBlock.CurrentDamage > 0)
                 {
-                    damagedCounter = damagedCounter + 1;
-                    result.Add("\"" + terminalBlock.DisplayNameText + "\"");
+                    damagedCounter++;
+                    result.Add(new JsonPrimitive("", terminalBlock.DisplayNameText));
                 }
             }
             damagedBlockRatio = damagedCounter / allTBlocks.Count();
-            return String.Join(",", result);
-        }
-
-        public bool isDamaged()
-        {
-            return getDamagedBlocks() != "";
+            return damagedCounter > 0;
         }
 
         public bool isLowAmmo()
@@ -677,6 +683,8 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                 display.WriteText(showInventory(getGridInventory(), 30));
             }
 
+            checkMaxSpeed();
+
             if (arg != "")
             {
                 //change parameters
@@ -730,7 +738,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                         cargoLoad(props[1], props[2]);
                         break;
                     case "maxSpeed":
-                        maxSpeed(props[1]);
+                        setMaxSpeed(props[1]);
                         break;
                     case "connect":
                         connect(props[1], props[2]);
@@ -771,30 +779,35 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                 List<IMyTextPanel> status_displays = new List<IMyTextPanel>();
                 List<IMyTextPanel> request_displays = new List<IMyTextPanel>();
 
-                statusMessage = "\"green\"";
-                if (isDamaged() || isLowAmmo() || isLowFuel(out ftype))
+                var Status = new JsonObject("");
+
+                statusMessage = "green";
+                var statusEvents = new JsonList("Events");
+                if (isLowAmmo())
                 {
-                    statusMessage = "\"orange\"";
-                    if (isLowAmmo())
-                    {
-                        //todo check what type of ammo need and how many, add to details
-                        string tmp = "{\"Event\":\"lowAmmo\"}";
-                        events.Add(tmp);
-                    }
-                    if (isDamaged())
-                    {
-                        string tmp = "{\"event\":\"damaged\"";
-                        tmp = tmp + ",\"blocks\":[" + getDamagedBlocks() + "]";
-                        tmp = tmp + "}";
-                        events.Add(tmp);
-                    }
-                    if (isLowFuel(out ftype))
-                    {
-                        string tmp = "{\"event\":\"lowFuel\"";
-                        tmp = tmp + ",\"fueltype\":" + ftype;
-                        tmp = tmp + "}";
-                        events.Add(tmp);
-                    }
+                    //todo check what type of ammo need and how many, add to details
+                    statusMessage = "orange";
+                    var curEvent = new JsonObject("");
+                    statusEvents.Add(curEvent);
+                    curEvent.Add(new JsonPrimitive("Event", "lowAmmo"));
+                }
+
+                JsonList damagedJson;
+                if (damaged(out damagedJson))
+                {
+                    statusMessage = "orange";
+                    var curEvent = new JsonObject("");
+                    statusEvents.Add(curEvent);
+                    curEvent.Add(new JsonPrimitive("Event", "damaged"));
+                    curEvent.Add(damagedJson);
+                }
+                if (isLowFuel(out ftype))
+                {
+                    statusMessage = "orange";
+                    var curEvent = new JsonObject("");
+                    statusEvents.Add(curEvent);
+                    curEvent.Add(new JsonPrimitive("Event", "lowFuel"));
+                    curEvent.Add(new JsonPrimitive("fueltype", ftype));
                 }
                 if (isAttacked())
                 {
@@ -824,27 +837,21 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                     events.Add(tmp);
                 }
 
-                statusMessage = "{\"Name\":\"" + Me.CubeGrid.CustomName + "\",\"Additional\":\"" + additionalStatus + "\",\"Status\":" + statusMessage;
-
-                statusMessage = statusMessage + ",\"Info\":[";
-                statusMessage = statusMessage + "{\"GasAmount\":" + getGridGasAmount("Hydrogen") + "},";
-                statusMessage = statusMessage + "{\"BatteryCharge\":" + getGridBatteryCharge() + "},";
-                statusMessage = statusMessage + "{\"CargoUsed\":" + getGridUsedCargoSpace() + "},";
-                statusMessage = statusMessage + "{\"Position\":\"" + getMyCoords() + "\"},";
-                statusMessage = statusMessage + "{\"Velocity\":" + getGridVelocity() + "}";
-                statusMessage = statusMessage + "]";
-
-                if (events.Count > 0)
+                Status.Add(new JsonPrimitive("Name", Me.CubeGrid.CustomName));
+                Status.Add(new JsonPrimitive("Additional", additionalStatus));
+                Status.Add(new JsonPrimitive("Status", statusMessage));
+                Status.Add(new JsonPrimitive("GasAmount", getGridGasAmount("Hydrogen")));
+                Status.Add(new JsonPrimitive("BatteryCharge", getGridBatteryCharge()));
+                Status.Add(new JsonPrimitive("CargoUsed", getGridUsedCargoSpace()));
+                Status.Add(new JsonObject("Position", Me.GetPosition()));
+                Status.Add(new JsonPrimitive("Velocity", getGridVelocity()));
+                if (statusEvents.Count > 0)
                 {
-                    statusMessage = statusMessage + ",\"Events\":[";
-                    foreach (string e in events)
-                    {
-                        statusMessage = statusMessage + e + ",";
-                    }
-                    statusMessage = statusMessage.Remove(statusMessage.Length - 1) + "]";
+                    Status.Add(statusEvents);
                 }
+
                 //finish message
-                statusMessage = statusMessage + "}";
+                statusMessage = Status.ToString();
                 Echo(statusMessage);
 
                 reScanObjectGroupLocal(status_displays, StatusTag);
@@ -855,7 +862,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                 //string cmdTag = commandChannelTag + "." + Me.CubeGrid.CustomName;
                 //statusListener = IGC.RegisterBroadcastListener(statusChannelTag);
 
-                IGC.SendBroadcastMessage(statusChannelTag, statusMessage);
+                IGC.SendBroadcastMessage(statusChannelTag, Status.ToString(pretty: false));
                 commandListener = IGC.RegisterBroadcastListener(commandChannelTag);
 
                 while (commandListener.HasPendingMessage)
@@ -877,6 +884,550 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
 
             }
         }
+
+        interface IJsonNonPrimitive
+        {
+            void Add(JsonElement child);
+        }
+        public class JsonList : JsonElement, IJsonNonPrimitive, ICollection<JsonElement>
+        {
+            private List<JsonElement> Values;
+
+            public override JSONValueType ValueType
+            {
+                get
+                {
+                    return JSONValueType.LIST;
+                }
+            }
+
+            public JsonElement this[int i]
+            {
+                get
+                {
+                    return Values[i];
+                }
+            }
+
+            public int Count
+            {
+                get
+                {
+                    return Values.Count;
+                }
+            }
+
+            public bool IsReadOnly
+            {
+                get
+                {
+                    return false;
+                }
+            }
+
+            public JsonList(string key)
+            {
+                Key = key;
+                Values = new List<JsonElement>();
+            }
+
+            public void Add(JsonElement value)
+            {
+                Values.Add(value);
+            }
+
+
+            public override string ToString(bool pretty)
+            {
+                var result = "";
+                if (Key != "")
+                    result = Key + (pretty ? ": " : ":");
+                result += "[";
+                foreach (var jsonObj in Values)
+                {
+                    var childResult = jsonObj.ToString(pretty);
+                    if (pretty)
+                        childResult = childResult.Replace("\n", "\n  ");
+                    result += (pretty ? "\n  " : "") + childResult + ",";
+                }
+                result = result.Substring(0, result.Length - 1);
+                result += (pretty ? "\n]" : "]");
+
+                return result;
+            }
+
+            public void Clear()
+            {
+                Values.Clear();
+            }
+
+            public bool Contains(JsonElement item)
+            {
+                return Values.Contains(item);
+            }
+
+            public void CopyTo(JsonElement[] array, int arrayIndex)
+            {
+                Values.CopyTo(array, arrayIndex);
+            }
+
+            public bool Remove(JsonElement item)
+            {
+                return Values.Remove(item);
+            }
+
+            private IEnumerable<JsonElement> Elements()
+            {
+                foreach (var value in Values)
+                {
+                    yield return value;
+                }
+            }
+
+            public IEnumerator<JsonElement> GetEnumerator()
+            {
+                return Elements().GetEnumerator();
+            }
+
+            IEnumerator IEnumerable.GetEnumerator()
+            {
+                return GetEnumerator();
+            }
+        }
+
+        public class JsonObject : JsonElement, IJsonNonPrimitive
+        {
+            private Dictionary<string, JsonElement> Value;
+
+            public override JSONValueType ValueType
+            {
+                get
+                {
+                    return JSONValueType.NESTED;
+                }
+            }
+
+            public JsonElement this[string key]
+            {
+                get
+                {
+                    return Value[key];
+                }
+            }
+
+            public Dictionary<string, JsonElement>.KeyCollection Keys
+            {
+                get
+                {
+                    return Value.Keys;
+                }
+            }
+
+            public bool ContainsKey(string key)
+            {
+                return Value.ContainsKey(key);
+            }
+
+            public JsonElement GetValueOrDefault(string key)
+            {
+                if (ContainsKey(key))
+                    return this[key];
+                return null;
+            }
+
+            public JsonObject(string key = "")
+            {
+                Key = key;
+                Value = new Dictionary<string, JsonElement>();
+            }
+            public JsonObject(string key = "", Vector3D? vector = null)
+            {
+                Key = key;
+                Value = new Dictionary<string, JsonElement>();
+                if (vector != null)
+                {
+                    Vector3D tmp = (Vector3D)vector;
+                    Add(new JsonPrimitive("X", tmp.X));
+                    Add(new JsonPrimitive("Y", tmp.Y));
+                    Add(new JsonPrimitive("Z", tmp.Z));
+                }
+            }
+
+            public void Add(JsonElement jsonObj)
+            {
+                Value.Add(jsonObj.Key, jsonObj);
+            }
+
+            public override string ToString(bool pretty = true)
+            {
+                var result = "";
+                if (Key != "" && Key != null)
+                    result = Key + (pretty ? ": " : ":");
+                result += "{";
+                foreach (var kvp in Value)
+                {
+                    var childResult = kvp.Value.ToString(pretty);
+                    if (pretty)
+                        childResult = childResult.Replace("\n", "\n  ");
+                    result += (pretty ? "\n  " : "") + childResult + ",";
+                }
+                result = result.Substring(0, result.Length - 1);
+                result += (pretty ? "\n}" : "}");
+
+                return result;
+            }
+        }
+
+        public class JsonPrimitive : JsonElement
+        {
+            public string Value = null;
+            public double? dValue = null;
+            public int? iValue = null;
+
+            public override JSONValueType ValueType
+            {
+                get
+                {
+                    return JSONValueType.PRIMITIVE;
+                }
+            }
+
+            public JsonPrimitive(string key, string value)
+            {
+                Key = key;
+                Value = value;
+            }
+            public JsonPrimitive(string key, double value)
+            {
+                Key = key;
+                dValue = value;
+            }
+            public JsonPrimitive(string key, float value)
+            {
+                Key = key;
+                dValue = value;
+            }
+            public JsonPrimitive(string key, int value)
+            {
+                Key = key;
+                iValue = value;
+            }
+
+            public override void SetKey(string key)
+            {
+                base.SetKey(key);
+            }
+
+            public void SetValue(string value)
+            {
+                Value = value;
+            }
+
+
+            public T GetValue<T>()
+            {
+                object value = null;
+                if (typeof(T) == typeof(string))
+                {
+                    value = Value;
+                }
+                else if (typeof(T) == typeof(int))
+                {
+                    value = Int32.Parse(Value);
+                }
+                else if (typeof(T) == typeof(float))
+                {
+                    value = Single.Parse(Value);
+                }
+                else if (typeof(T) == typeof(double))
+                {
+                    value = Double.Parse(Value);
+                }
+                else if (typeof(T) == typeof(char))
+                {
+                    value = Char.Parse(Value);
+                }
+                else if (typeof(T) == typeof(DateTime))
+                {
+                    value = DateTime.Parse(Value);
+                }
+                else if (typeof(T) == typeof(decimal))
+                {
+                    value = Decimal.Parse(Value);
+                }
+                else if (typeof(T) == typeof(bool))
+                {
+                    value = Boolean.Parse(Value);
+                }
+                else if (typeof(T) == typeof(byte))
+                {
+                    value = Byte.Parse(Value);
+                }
+                else if (typeof(T) == typeof(uint))
+                {
+                    value = UInt32.Parse(Value);
+                }
+                else if (typeof(T) == typeof(short))
+                {
+                    value = short.Parse(Value);
+                }
+                else if (typeof(T) == typeof(long))
+                {
+                    value = long.Parse(Value);
+                }
+                /*else if (typeof(T) == typeof(List<JsonObject>))
+                {
+                    var values = GetBody()?.Values;
+                    if (values == null)
+                        value = new List<JsonObject>();
+                    else
+                        value = new List<JsonObject>(values);
+                }
+                else if (typeof(T) == typeof(Dictionary<string, JsonObject>))
+                {
+                    value = GetBody();
+                }*/
+                else
+                {
+                    throw new ArgumentException("Invalid type '" + typeof(T).ToString() + "' requested!");
+                }
+
+                return (T)value;
+            }
+
+            public bool TryGetValue<T>(out T result)
+            {
+                try
+                {
+                    result = GetValue<T>();
+                    return true;
+                }
+                catch (Exception)
+                {
+                    result = default(T);
+                    return false;
+                }
+            }
+
+            public override string ToString(bool pretty = true)
+            {
+                if (Value == null && iValue == null && dValue == null)
+                    return "";
+                var result = "";
+                if (Key != "" && Key != null)
+                    result = Key + (pretty ? ": " : ":");
+
+                if (Value != null)
+                {
+                    result += "\"" + Value + "\"";
+                }
+                else
+                {
+                    result += (iValue == null ? dValue : iValue).ToString();
+                }
+
+
+                return result;
+            }
+        }
+        public abstract class JsonElement
+        {
+            public enum JSONValueType { NESTED, LIST, PRIMITIVE }
+            public string Key { get; protected set; }
+
+            public bool IsPrimitive
+            {
+                get
+                {
+                    return ValueType == JSONValueType.PRIMITIVE;
+                }
+            }
+            public abstract JSONValueType ValueType { get; }
+
+            public virtual void SetKey(string key)
+            {
+                Key = key;
+            }
+
+            public override string ToString()
+            {
+                return ToString(true);
+            }
+
+            public abstract string ToString(bool pretty = true);
+
+        }
+        public class JSON
+        {
+            enum JSONPart { KEY, KEYEND, VALUE, VALUEEND }
+
+            private int LastCharIndex;
+            private IEnumerator<bool> Enumerator;
+            public string Serialized { get; private set; }
+            public JsonElement Result { get; private set; }
+            private bool ReadOnly;
+            private Func<bool> ShouldPause;
+
+            public int Progress
+            {
+                get
+                {
+                    if (Serialized.Length == 0) return 100;
+                    return 100 * Math.Max(0, LastCharIndex) / Serialized.Length;
+                }
+            }
+
+
+            public JSON(string serialized, Func<bool> shouldPause, bool readOnly = true)
+            {
+                Serialized = serialized;
+                Enumerator = Parse().GetEnumerator();
+                ReadOnly = readOnly;
+                ShouldPause = shouldPause;
+            }
+
+
+            public bool ParsingComplete()
+            {
+                return !Enumerator.MoveNext();
+            }
+
+            public IEnumerable<bool> Parse()
+            {
+                LastCharIndex = -1;
+                JSONPart Expected = JSONPart.VALUE;
+                Stack<Dictionary<string, JsonElement>> ListStack = new Stack<Dictionary<string, JsonElement>>();
+                Stack<IJsonNonPrimitive> JsonStack = new Stack<IJsonNonPrimitive>();
+                IJsonNonPrimitive CurrentNestedJsonObject = null;
+                IJsonNonPrimitive LastNestedJsonObject = null;
+                //Func<object, JsonObject> Generator = JsonObject.NewJsonObject("", readOnly);
+                var trimChars = new char[] { '"', '\'', ' ', '\n', '\r', '\t', '\f' };
+                string Key = "";
+                var keyDelims = new char[] { '}', ':' };
+                var valueDelims = new char[] { '{', '}', ',', '[', ']' };
+                var expectedDelims = valueDelims;
+                var charIndex = -1;
+                bool isInsideList = false;
+
+                while (LastCharIndex < Serialized.Length - 1)
+                {
+                    charIndex = Serialized.IndexOfAny(expectedDelims, LastCharIndex + 1);
+                    if (charIndex == -1)
+                        throw new UnexpectedCharacterException(expectedDelims, "EOF", LastCharIndex);
+
+                    char foundChar = Serialized[charIndex];
+                    if (Expected == JSONPart.VALUE)
+                    {
+                        //Console.WriteLine("Expecting Value...");
+                        //Console.WriteLine("Found " + Serialized[charIndex] + " (" + charIndex + ")");
+                        switch (foundChar)
+                        {
+                            case '[':
+                                CurrentNestedJsonObject = new JsonList(Key);
+                                JsonStack.Peek().Add(CurrentNestedJsonObject as JsonElement);
+                                JsonStack.Push(CurrentNestedJsonObject);
+                                //Console.WriteLine("List started");
+                                break;
+                            case '{':
+                                //Console.WriteLine("Found new JsonObject");
+                                CurrentNestedJsonObject = new JsonObject(Key);
+                                if (JsonStack.Count > 0)
+                                    JsonStack.Peek().Add(CurrentNestedJsonObject as JsonElement);
+                                JsonStack.Push(CurrentNestedJsonObject);
+                                Expected = JSONPart.KEY;
+                                expectedDelims = keyDelims;
+                                break;
+                            case ',':
+                            case '}':
+                            case ']':
+                                var value = Serialized.Substring(LastCharIndex + 1, charIndex - LastCharIndex - 1).Trim(trimChars);
+                                //Console.WriteLine("value is: '" + value + "'");
+                                JsonStack.Peek().Add(new JsonPrimitive(Key, value));
+                                if (foundChar == '}' || foundChar == ']')
+                                {
+                                    /*if (foundChar == ']')
+                                    {
+                                        Console.WriteLine("Leaving List...");
+                                    }
+                                    else
+                                    {
+                                        Console.WriteLine("Leaving JsonObject...");
+                                    }*/
+                                    if (charIndex < Serialized.Length - 1 && Serialized[charIndex + 1] == ',')
+                                        charIndex++;
+                                    LastNestedJsonObject = JsonStack.Pop();
+                                }
+                                break;
+                        }
+
+                        isInsideList = JsonStack.Count == 0 || JsonStack.Peek() is JsonList;
+                        if (isInsideList)
+                        {
+                            Key = null;
+                            Expected = JSONPart.VALUE;
+                            expectedDelims = valueDelims;
+                        }
+                        else
+                        {
+                            Expected = JSONPart.KEY;
+                            expectedDelims = keyDelims;
+                        }
+                    }
+                    else if (Expected == JSONPart.KEY)
+                    {
+                        //Console.WriteLine("Expecting Key...");
+                        //Console.WriteLine("Found " + Serialized[charIndex] + " (" + charIndex + ")");
+
+                        switch (Serialized[charIndex])
+                        {
+                            case ':':
+                                Key = Serialized.Substring(LastCharIndex + 1, charIndex - LastCharIndex - 1).Trim(trimChars);
+                                //Console.WriteLine("key is: '" + Key + "'");
+                                //Generator = JsonObject.NewJsonObject(Key, readOnly);
+                                Expected = JSONPart.VALUE;
+                                expectedDelims = valueDelims;
+                                break;
+                            case '}':
+                                //Console.WriteLine("Leaving JsonObject...");
+                                if (charIndex < Serialized.Length - 1 && Serialized[charIndex + 1] == ',')
+                                    charIndex++;
+                                LastNestedJsonObject = JsonStack.Pop();
+                                break;
+                            default:
+                                //Console.WriteLine($"Invalid character found: '{Serialized[charIndex]}', expected ':'!");
+                                break;
+                        }
+                    }
+
+                    LastCharIndex = charIndex;
+                    //Console.WriteLine("Iteration done, CurrentJsonObject is: '" + CurrentNestedJsonObject.Key + "'");
+                    if (ShouldPause())
+                    {
+                        yield return false;
+                    }
+                }
+
+                Result = LastNestedJsonObject as JsonElement;
+                yield return true;
+            }
+
+            private class ParseException : Exception
+            {
+                public ParseException(string message, int position = -1)
+                    : base("PARSE ERROR" + (position == -1 ? "" : " after char " + position.ToString()) + ": " + message) { }
+
+            }
+
+            private class UnexpectedCharacterException : ParseException
+            {
+                public UnexpectedCharacterException(char[] expected, string received, int position = -1)
+                    : base("Expected one of [ '" + string.Join("', '", expected) + "' ] but received " + received + "!", position)
+                { }
+
+            }
+
+        }
+
         #region PreludeFooter
     }
 }
