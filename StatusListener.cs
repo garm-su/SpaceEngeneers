@@ -167,7 +167,7 @@ namespace SpaceEngineers.UWBlockPrograms.StatusListener
                         catch (Exception e) // in case something went wrong (either your json is wrong or my library has a bug :P)
                         {
                             logger.write("There's somethign wrong with your json: " + e.Message);
-                            return;
+                            continue;
                         }
                         Echo(">>> " + jsonData["Name"].ToString());
                         Use(jsonData);
