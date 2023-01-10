@@ -27,50 +27,34 @@ namespace SpaceEngineers.UWBlockPrograms.JSON
 
         public Program()
         {
+            Echo("Executed");
         }
-        public bool shouldPause()
+
+        public bool retf()
         {
-            return Runtime.CurrentInstructionCount > 1000;
+            Echo("stop?");
+            return false;
         }
 
         public void Main(string argument)
         {
             Echo("Hello World!");
+            if (argument == "xxx")
+            {
 
-            bool parsingComplete = false;
+                var testStr = "{\"Name\":\"xxx\", \"Val\":123.3}";
 
-            var json = new JsonObject();
-
-            json.Add(new JsonPrimitive("test", "xxx"));
-            Echo(json.ToString());
-
-
-
-            // var Parser = new JSON(argument, ()=>false);
-            // try
-            // {
-            //     // This Method parses the string until a certain time limit is reached or it has finished.
-            //     // Doing this prevents the script from causing lags (we distribute the load evenly over multiple
-            //     // ticks, if necessary)
-            //     parsingComplete = Parser.ParsingComplete();
-            // }
-            // catch (Exception e) // in case something went wrong (either your json is wrong or my library has a bug :P)
-            // {
-            //     Echo("There's somethign wrong with your json: " + e.Message);
-            //     return;
-            // }
-
-            // Echo(Parser.Result.ToString(true));
-            // if (parsingComplete) // if parsing is complete...
-            // {
-            //     Echo("Argument has been parsed!");
-            //     Echo(Parser.Result.ToString(true));  // ... output the prettified json
-            // }
-            // else  // else...
-            // {
-            //     Runtime.UpdateFrequency = UpdateFrequency.Once; // ... we'll continue on the next tick
-            //     Echo("Parsing (" + Parser.Progress + "%)..."); // ... and output the parsing progress
-            // }
+                try
+                {
+                    var jsonData = (new JSON(testStr)).Parse();
+                    Echo(jsonData.ToString());
+                }
+                catch (Exception e) // in case something went wrong (either your json is wrong or my library has a bug :P)
+                {
+                    Echo("There's somethign wrong with your json: " + e.Message);
+                    return;
+                }
+            }
         }
 
         interface IJsonNonPrimitive
@@ -227,6 +211,18 @@ namespace SpaceEngineers.UWBlockPrograms.JSON
             {
                 Key = key;
                 Value = new Dictionary<string, JsonElement>();
+            }
+            public JsonObject(string key = "", Vector3D? vector = null)
+            {
+                Key = key;
+                Value = new Dictionary<string, JsonElement>();
+                if (vector != null)
+                {
+                    Vector3D tmp = (Vector3D)vector;
+                    Add(new JsonPrimitive("X", tmp.X));
+                    Add(new JsonPrimitive("Y", tmp.Y));
+                    Add(new JsonPrimitive("Z", tmp.Z));
+                }
             }
 
             public void Add(JsonElement jsonObj)
@@ -438,37 +434,27 @@ namespace SpaceEngineers.UWBlockPrograms.JSON
             enum JSONPart { KEY, KEYEND, VALUE, VALUEEND }
 
             private int LastCharIndex;
-            private IEnumerator<bool> Enumerator;
             public string Serialized { get; private set; }
-            public JsonElement Result { get; private set; }
             private bool ReadOnly;
-            private Func<bool> ShouldPause;
 
             public int Progress
             {
                 get
                 {
-                    if (Serialized.Length == 0) return 100;
+                    if (Serialized.Length == 0) return 999;
                     return 100 * Math.Max(0, LastCharIndex) / Serialized.Length;
                 }
             }
 
 
-            public JSON(string serialized, Func<bool> shouldPause, bool readOnly = true)
+            public JSON(string serialized, bool readOnly = true)
             {
                 Serialized = serialized;
-                Enumerator = Parse().GetEnumerator();
                 ReadOnly = readOnly;
-                ShouldPause = shouldPause;
             }
 
 
-            public bool ParsingComplete()
-            {
-                return !Enumerator.MoveNext();
-            }
-
-            public IEnumerable<bool> Parse()
+            public JsonElement Parse()
             {
                 LastCharIndex = -1;
                 JSONPart Expected = JSONPart.VALUE;
@@ -576,15 +562,12 @@ namespace SpaceEngineers.UWBlockPrograms.JSON
                     }
 
                     LastCharIndex = charIndex;
-                    //Console.WriteLine("Iteration done, CurrentJsonObject is: '" + CurrentNestedJsonObject.Key + "'");
-                    if (ShouldPause())
-                    {
-                        yield return false;
-                    }
                 }
-
-                Result = LastNestedJsonObject as JsonElement;
-                yield return true;
+                if (JsonStack.Count > 0)
+                {
+                    throw new ParseException("StackCount " + JsonStack.Count, LastCharIndex);
+                }
+                return LastNestedJsonObject as JsonElement;
             }
 
             private class ParseException : Exception
