@@ -53,7 +53,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
         const string StatusTag = "[STATUS]";
         const string RequestTag = "[REQUEST]";
         const string infoTag = "[INFO]";
-        
+
         string LogTag = "[LOG]";
         const double BATTERY_MAX_LOAD = 0.95;
 
@@ -69,7 +69,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
         bool lockedState = false;
 
         int LogMaxCount = 100;
-        int maxSpeed = 0;        
+        int maxSpeed = 0;
 
         //alert tresholds
         double energyTreshold = 0.25; //% of max capacity, default - 25%
@@ -184,7 +184,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
 
             //actions
         }
-        
+
         public void reReadConfig(Dictionary<string, int> minResourses, String CustomData)
         {
             minResourses.Clear();
@@ -299,7 +299,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                 var t = new JsonObject("");
                 t.Add(new JsonPrimitive("Name", target.Name));
                 t.Add(new JsonPrimitive("Type", target.Type.ToString()));
-                t.Add(new JsonPrimitive("Position", target.Position.ToString()));                
+                t.Add(new JsonPrimitive("Position", target.Position.ToString()));
                 result.Add(t);
             }
             return result;
@@ -339,9 +339,9 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             return (isTargets || isLocked || isLargeDamage || isDestroyedBlocks);
         }
 
-/*        public bool damaged(out JsonList result)
-        {
-        }*/
+        /*        public bool damaged(out JsonList result)
+                {
+                }*/
 
         public bool isLowAmmo()
         {
@@ -355,7 +355,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             double result = 0;
             List<IMyShipController> controls = new List<IMyShipController>();
             reScanObjectsLocal(controls);
-            if(controls.Count() > 0)
+            if (controls.Count() > 0)
             {
                 result = (double)controls[0].GetShipVelocities().LinearVelocity.Length();
             }
@@ -385,21 +385,21 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                 ftype = "[" + String.Join(",", ftypes) + "]";
             }
             return result;
-        }        
+        }
 
         public string showInventory(Dictionary<string, int> items, int strsize)
         {
             string itemStr = "";
             foreach (var i in items)
             {
-				int len = strsize - i.Key.Split('.')[1].Length - i.Value.ToString().Length;
-				itemStr += i.Key.Split('.')[1] + " ";
-				if (len >= 0)
-				{
-					string t = new string(' ', len);
-					 itemStr += t;
-				}
-				itemStr += i.Value.ToString() + "\n";
+                int len = strsize - i.Key.Split('.')[1].Length - i.Value.ToString().Length;
+                itemStr += i.Key.Split('.')[1] + " ";
+                if (len >= 0)
+                {
+                    string t = new string(' ', len);
+                    itemStr += t;
+                }
+                itemStr += i.Value.ToString() + "\n";
             }
             return itemStr;
         }
@@ -417,76 +417,76 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
 
         public string getStatus()
         {
-                string statusMessage = "";
-                string ftype;
-                List<string> events = new List<string>();
-                var Status = new JsonObject("");
-                statusMessage = "green";
-                var statusEvents = new JsonList("Events");
+            string statusMessage = "";
+            string ftype;
+            List<string> events = new List<string>();
+            var Status = new JsonObject("");
+            statusMessage = "green";
+            var statusEvents = new JsonList("Events");
 
-                if (isLowAmmo())
+            if (isLowAmmo())
+            {
+                //todo check what type of ammo need and how many, add to details
+                statusMessage = "orange";
+                var curEvent = new JsonObject("");
+                statusEvents.Add(curEvent);
+                curEvent.Add(new JsonPrimitive("Event", "lowAmmo"));
+            }
+
+            if (gridDamagedBlocks.Count() > 0)
+            {
+                statusMessage = "orange";
+                var curEvent = new JsonObject("");
+                JsonList damagedJson = new JsonList("Blocks"); ;
+                statusEvents.Add(curEvent);
+                curEvent.Add(new JsonPrimitive("Event", "damaged"));
+                foreach (var b in gridDamagedBlocks)
                 {
-                    //todo check what type of ammo need and how many, add to details
-                    statusMessage = "orange";
-                    var curEvent = new JsonObject("");
-                    statusEvents.Add(curEvent);
-                    curEvent.Add(new JsonPrimitive("Event", "lowAmmo"));
+                    damagedJson.Add(new JsonPrimitive("", b));
                 }
+                curEvent.Add(damagedJson);
+            }
 
-                if (gridDamagedBlocks.Count() > 0)
+            if (isLowFuel(out ftype))
+            {
+                statusMessage = "orange";
+                var curEvent = new JsonObject("");
+                statusEvents.Add(curEvent);
+                curEvent.Add(new JsonPrimitive("Event", "lowFuel"));
+                curEvent.Add(new JsonPrimitive("fueltype", ftype));
+            }
+
+            if (isAttacked())
+            {
+                statusMessage = "red";
+                var curEvent = new JsonObject("");
+                curEvent.Add(new JsonPrimitive("Event", "underAttack"));
+                curEvent.Add(new JsonPrimitive("Locked", lockedState.ToString()));
+                curEvent.Add(new JsonPrimitive("Damaged", damagedBlockRatio * 100));
+                curEvent.Add(new JsonPrimitive("Destroyed", destroyedAmount));
+                if (targets.Count() > 0)
                 {
-                    statusMessage = "orange";
-                    var curEvent = new JsonObject("");
-                    JsonList damagedJson = new JsonList("Blocks");;
-                    statusEvents.Add(curEvent);
-                    curEvent.Add(new JsonPrimitive("Event", "damaged"));
-                    foreach(var b in gridDamagedBlocks)
-                    {
-                        damagedJson.Add(new JsonPrimitive("", b));
-                    }
-                    curEvent.Add(damagedJson);
+                    statusEvents.Add(getEnemyTargetsData());
                 }
+            }
 
-                if (isLowFuel(out ftype))
-                {
-                    statusMessage = "orange";
-                    var curEvent = new JsonObject("");
-                    statusEvents.Add(curEvent);
-                    curEvent.Add(new JsonPrimitive("Event", "lowFuel"));
-                    curEvent.Add(new JsonPrimitive("fueltype", ftype));
-                }
+            Status.Add(new JsonPrimitive("Name", Me.CubeGrid.CustomName));
+            Status.Add(new JsonPrimitive("Additional", additionalStatus));
+            Status.Add(new JsonPrimitive("Status", statusMessage));
+            Status.Add(new JsonPrimitive("GasAmount", gridGas));
+            Status.Add(new JsonPrimitive("BatteryCharge", gridCharge));
+            Status.Add(new JsonPrimitive("CargoUsed", gridLoad));
+            Status.Add(new JsonObject("Position", Me.GetPosition()));
+            Status.Add(new JsonPrimitive("Velocity", getGridVelocity()));
+            if (statusEvents.Count > 0)
+            {
+                Status.Add(statusEvents);
+            }
 
-                if (isAttacked())
-                {
-                    statusMessage = "red";
-                    var curEvent = new JsonObject("");
-                    curEvent.Add(new JsonPrimitive("Event", "underAttack"));
-                    curEvent.Add(new JsonPrimitive("Locked", lockedState.ToString()));
-                    curEvent.Add(new JsonPrimitive("Damaged", damagedBlockRatio * 100));
-                    curEvent.Add(new JsonPrimitive("Destroyed", destroyedAmount));
-                    if(targets.Count() > 0)
-                    {
-                        statusEvents.Add(getEnemyTargetsData());
-                    }
-                }
-
-                Status.Add(new JsonPrimitive("Name", Me.CubeGrid.CustomName));
-                Status.Add(new JsonPrimitive("Additional", additionalStatus));
-                Status.Add(new JsonPrimitive("Status", statusMessage));
-                Status.Add(new JsonPrimitive("GasAmount", gridGas));
-                Status.Add(new JsonPrimitive("BatteryCharge", gridCharge));
-                Status.Add(new JsonPrimitive("CargoUsed", gridLoad));
-                Status.Add(new JsonObject("Position", Me.GetPosition()));
-                Status.Add(new JsonPrimitive("Velocity", getGridVelocity()));
-                if (statusEvents.Count > 0)
-                {
-                    Status.Add(statusEvents);
-                }
-
-                //finish message
-                statusMessage = Status.ToString(false);
-                Echo(statusMessage);
-                return statusMessage;
+            //finish message
+            statusMessage = Status.ToString(false);
+            Echo(statusMessage);
+            return statusMessage;
 
         }
 
@@ -544,7 +544,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             targets = updateTurretsTargets();
             gridDamagedBlocks = updateDamagedBlocks();
             gridDestroyedBlocks = updateDestroyedBlocks();
-            damagedBlockRatio = gridDamagedBlocks.Count()/allTBlocks.Count();
+            damagedBlockRatio = gridDamagedBlocks.Count() / allTBlocks.Count();
             destroyedAmount = gridDestroyedBlocks.Count();
         }
         //===================================================================================
@@ -918,7 +918,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
             }
         }
 
-    // ---------------------------------------------------------- json parser ----------------------------------------------------
+        // ---------------------------------------------------------- json parser ----------------------------------------------------
         interface IJsonNonPrimitive
         {
             void Add(JsonElement child);
@@ -984,7 +984,10 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                         childResult = childResult.Replace("\n", "\n  ");
                     result += (pretty ? "\n  " : "") + childResult + ",";
                 }
-                result = result.Substring(0, result.Length - 1);
+                if (Values.Count > 0)
+                {
+                    result = result.Substring(0, result.Length - 1);
+                }
                 result += (pretty ? "\n]" : "]");
 
                 return result;
@@ -1105,7 +1108,10 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus
                         childResult = childResult.Replace("\n", "\n  ");
                     result += (pretty ? "\n  " : "") + childResult + ",";
                 }
-                result = result.Substring(0, result.Length - 1);
+                if (Value.Count > 0)
+                {
+                    result = result.Substring(0, result.Length - 1);
+                }
                 result += (pretty ? "\n}" : "}");
 
                 return result;

@@ -243,7 +243,10 @@ namespace SpaceEngineers.UWBlockPrograms.StatusListener
                         childResult = childResult.Replace("\n", "\n  ");
                     result += (pretty ? "\n  " : "") + childResult + ",";
                 }
-                result = result.Substring(0, result.Length - 1);
+                if (Values.Count > 0)
+                {
+                    result = result.Substring(0, result.Length - 1);
+                }
                 result += (pretty ? "\n]" : "]");
 
                 return result;
@@ -364,7 +367,10 @@ namespace SpaceEngineers.UWBlockPrograms.StatusListener
                         childResult = childResult.Replace("\n", "\n  ");
                     result += (pretty ? "\n  " : "") + childResult + ",";
                 }
-                result = result.Substring(0, result.Length - 1);
+                if (Value.Count > 0)
+                {
+                    result = result.Substring(0, result.Length - 1);
+                }
                 result += (pretty ? "\n}" : "}");
 
                 return result;

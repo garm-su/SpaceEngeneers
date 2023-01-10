@@ -167,6 +167,115 @@ namespace SpaceEngineers.UWBlockPrograms.JSON
             }
         }
 
+        public class JsonList : JsonElement, IJsonNonPrimitive, ICollection<JsonElement>
+        {
+            private List<JsonElement> Values;
+
+            public override JSONValueType ValueType
+            {
+                get
+                {
+                    return JSONValueType.LIST;
+                }
+            }
+
+            public JsonElement this[int i]
+            {
+                get
+                {
+                    return Values[i];
+                }
+            }
+
+            public int Count
+            {
+                get
+                {
+                    return Values.Count;
+                }
+            }
+
+            public bool IsReadOnly
+            {
+                get
+                {
+                    return false;
+                }
+            }
+
+            public JsonList(string key)
+            {
+                Key = key;
+                Values = new List<JsonElement>();
+            }
+
+            public void Add(JsonElement value)
+            {
+                Values.Add(value);
+            }
+
+
+            public override string ToString(bool pretty)
+            {
+                var result = "";
+                if (Key != "")
+                    result = "\"" + Key + (pretty ? "\": " : "\":");
+                result += "[";
+                foreach (var jsonObj in Values)
+                {
+                    var childResult = jsonObj.ToString(pretty);
+                    if (pretty)
+                        childResult = childResult.Replace("\n", "\n  ");
+                    result += (pretty ? "\n  " : "") + childResult + ",";
+                }
+                if (Values.Count > 0)
+                {
+                    result = result.Substring(0, result.Length - 1);
+                }
+                result += (pretty ? "\n]" : "]");
+
+                return result;
+            }
+
+            public void Clear()
+            {
+                Values.Clear();
+            }
+
+            public bool Contains(JsonElement item)
+            {
+                return Values.Contains(item);
+            }
+
+            public void CopyTo(JsonElement[] array, int arrayIndex)
+            {
+                Values.CopyTo(array, arrayIndex);
+            }
+
+            public bool Remove(JsonElement item)
+            {
+                return Values.Remove(item);
+            }
+
+            private IEnumerable<JsonElement> Elements()
+            {
+                foreach (var value in Values)
+                {
+                    yield return value;
+                }
+            }
+
+            public IEnumerator<JsonElement> GetEnumerator()
+            {
+                return Elements().GetEnumerator();
+            }
+
+            IEnumerator IEnumerable.GetEnumerator()
+            {
+                return GetEnumerator();
+            }
+        }
+
         public class JsonObject : JsonElement, IJsonNonPrimitive
         {
             private Dictionary<string, JsonElement> Value;
@@ -243,161 +352,11 @@ namespace SpaceEngineers.UWBlockPrograms.JSON
                         childResult = childResult.Replace("\n", "\n  ");
                     result += (pretty ? "\n  " : "") + childResult + ",";
                 }
-                result = result.Substring(0, result.Length - 1);
+                if (Value.Count > 0)
+                {
+                    result = result.Substring(0, result.Length - 1);
+                }
                 result += (pretty ? "\n}" : "}");
-
-                return result;
-            }
-        }
-
-        public class JsonPrimitive : JsonElement
-        {
-            public string Value = null;
-            public double? dValue = null;
-            public int? iValue = null;
-
-            public override JSONValueType ValueType
-            {
-                get
-                {
-                    return JSONValueType.PRIMITIVE;
-                }
-            }
-
-            public JsonPrimitive(string key, string value)
-            {
-                Key = key;
-                Value = value;
-            }
-            public JsonPrimitive(string key, double value)
-            {
-                Key = key;
-                dValue = value;
-            }
-            public JsonPrimitive(string key, float value)
-            {
-                Key = key;
-                dValue = value;
-            }
-            public JsonPrimitive(string key, int value)
-            {
-                Key = key;
-                iValue = value;
-            }
-
-            public override void SetKey(string key)
-            {
-                base.SetKey(key);
-            }
-
-            public void SetValue(string value)
-            {
-                Value = value;
-            }
-
-
-            public T GetValue<T>()
-            {
-                object value = null;
-                if (typeof(T) == typeof(string))
-                {
-                    value = Value;
-                }
-                else if (typeof(T) == typeof(int))
-                {
-                    value = Int32.Parse(Value);
-                }
-                else if (typeof(T) == typeof(float))
-                {
-                    value = Single.Parse(Value);
-                }
-                else if (typeof(T) == typeof(double))
-                {
-                    value = Double.Parse(Value);
-                }
-                else if (typeof(T) == typeof(char))
-                {
-                    value = Char.Parse(Value);
-                }
-                else if (typeof(T) == typeof(DateTime))
-                {
-                    value = DateTime.Parse(Value);
-                }
-                else if (typeof(T) == typeof(decimal))
-                {
-                    value = Decimal.Parse(Value);
-                }
-                else if (typeof(T) == typeof(bool))
-                {
-                    value = Boolean.Parse(Value);
-                }
-                else if (typeof(T) == typeof(byte))
-                {
-                    value = Byte.Parse(Value);
-                }
-                else if (typeof(T) == typeof(uint))
-                {
-                    value = UInt32.Parse(Value);
-                }
-                else if (typeof(T) == typeof(short))
-                {
-                    value = short.Parse(Value);
-                }
-                else if (typeof(T) == typeof(long))
-                {
-                    value = long.Parse(Value);
-                }
-                /*else if (typeof(T) == typeof(List<JsonObject>))
-                {
-                    var values = GetBody()?.Values;
-                    if (values == null)
-                        value = new List<JsonObject>();
-                    else
-                        value = new List<JsonObject>(values);
-                }
-                else if (typeof(T) == typeof(Dictionary<string, JsonObject>))
-                {
-                    value = GetBody();
-                }*/
-                else
-                {
-                    throw new ArgumentException("Invalid type '" + typeof(T).ToString() + "' requested!");
-                }
-
-                return (T)value;
-            }
-
-            public bool TryGetValue<T>(out T result)
-            {
-                try
-                {
-                    result = GetValue<T>();
-                    return true;
-                }
-                catch (Exception)
-                {
-                    result = default(T);
-                    return false;
-                }
-            }
-
-            public override string ToString(bool pretty = true)
-            {
-                if (Value == null && iValue == null && dValue == null)
-                    return "";
-                var result = "";
-                if (Key != "" && Key != null)
-                    result = "\"" + Key + (pretty ? "\": " : "\":");
-
-                if (Value != null)
-                {
-                    result += "\"" + Value + "\"";
-                }
-                else
-                {
-                    result += (iValue == null ? dValue : iValue).ToString();
-                }
-
 
                 return result;
             }
