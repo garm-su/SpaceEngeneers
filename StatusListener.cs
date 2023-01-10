@@ -134,7 +134,7 @@ namespace SpaceEngineers.UWBlockPrograms.StatusListener
                 objects.Add(obj);
                 nameToObject[name] = obj;
             }
-            Echo(jsonData.ToString());
+            Echo(jsonData.ToString(false));
             obj.Update(jsonData);
         }
 
@@ -158,7 +158,7 @@ namespace SpaceEngineers.UWBlockPrograms.StatusListener
                 {
                     if (newStatus.Data is string)
                     {
-                        logger.write((string)newStatus.Data);
+                        logger.write("in: " + (string)newStatus.Data);
                         JsonObject jsonData;
                         try
                         {
@@ -169,13 +169,13 @@ namespace SpaceEngineers.UWBlockPrograms.StatusListener
                             logger.write("There's somethign wrong with your json: " + e.Message);
                             return;
                         }
-
+                        Echo(">>> " + jsonData["Name"].ToString());
                         Use(jsonData);
                     }
                 }
             }
 
-            
+
         }
 
         interface IJsonNonPrimitive
@@ -234,7 +234,7 @@ namespace SpaceEngineers.UWBlockPrograms.StatusListener
             {
                 var result = "";
                 if (Key != "")
-                    result = Key + (pretty ? ": " : ":");
+                    result = "\"" + Key + (pretty ? "\": " : "\":");
                 result += "[";
                 foreach (var jsonObj in Values)
                 {
@@ -355,7 +355,7 @@ namespace SpaceEngineers.UWBlockPrograms.StatusListener
             {
                 var result = "";
                 if (Key != "" && Key != null)
-                    result = Key + (pretty ? ": " : ":");
+                    result = "\"" + Key + (pretty ? "\": " : "\":");
                 result += "{";
                 foreach (var kvp in Value)
                 {
@@ -508,7 +508,7 @@ namespace SpaceEngineers.UWBlockPrograms.StatusListener
                     return "";
                 var result = "";
                 if (Key != "" && Key != null)
-                    result = Key + (pretty ? ": " : ":");
+                    result = "\"" + Key + (pretty ? "\": " : "\":");
 
                 if (Value != null)
                 {
@@ -706,8 +706,6 @@ namespace SpaceEngineers.UWBlockPrograms.StatusListener
 
             }
 
-
-
         }
 
         public class LogEntry
@@ -746,7 +744,6 @@ namespace SpaceEngineers.UWBlockPrograms.StatusListener
 
             public void write(String info)
             {
-                parent.Echo(info);
                 rescan();
                 if (logs.Count > 0 && logs[0].log == info)
                 {
