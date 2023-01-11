@@ -1,5 +1,3 @@
-
-#region Prelude
 using System;
 using System.Linq;
 using System.Text;
@@ -16,24 +14,16 @@ using Sandbox.ModAPI.Interfaces;
 using Sandbox.Game.EntityComponents;
 using SpaceEngineers.Game.ModAPI.Ingame;
 using VRage.Game.ObjectBuilders.Definitions;
-using VRage.Game.ModAPI.Ingame.Utilities;
-using LitJson;
+using SpaceEngineers.UWBlockPrograms.Grid;
 
-// Change this namespace for each script you create.
-namespace SpaceEngineers.UWBlockPrograms.LL
-{
-    public sealed class Program : MyGridProgram
-    {
-        // Your code goes between the next #endregion and #region
-        #endregion
+namespace SpaceEngineers.UWBlockPrograms.LogLibrary //@remove
+{ //@remove
+    public class Program : Grid.Program //@remove
+    { //@remove
 
-        string LogTag = "[LOG]";
-        int LogMaxCount = 100;
 
-        public void reScanObjectGroupLocal<T>(List<T> result, String name) where T : class, IMyTerminalBlock
-        {
-            GridTerminalSystem.GetBlocksOfType<T>(result, item => item.CubeGrid == Me.CubeGrid && item.CustomName.Contains(name));
-        }
+        public string LogTag = "[LOG]"; //move to script //@remove
+        public int LogMaxCount = 100; //move to script //@remove
 
         public class LogEntry
         {
@@ -91,8 +81,5 @@ namespace SpaceEngineers.UWBlockPrograms.LL
             }
         }
 
-
-        #region PreludeFooter
-    }
-}
-#endregion
+    } //@remove
+} //@remove

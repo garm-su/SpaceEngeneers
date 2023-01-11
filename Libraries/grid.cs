@@ -1,5 +1,3 @@
-
-#region Prelude
 using System;
 using System.Linq;
 using System.Text;
@@ -20,12 +18,28 @@ using VRage.Game.ModAPI.Ingame.Utilities;
 using LitJson;
 
 // Change this namespace for each script you create.
-namespace SpaceEngineers.UWBlockPrograms.GF
-{
-    public sealed class Program : MyGridProgram
-    {
-        // Your code goes between the next #endregion and #region
-        #endregion
+namespace SpaceEngineers.UWBlockPrograms.Grid //@remove
+{ //@remove
+    public class Program : Helpers.Program //@remove
+    { //@remove
+        public void reReadConfig(Dictionary<string, int> minResourses, String CustomData)
+        {
+            minResourses.Clear();
+
+            foreach (String row in CustomData.Split('\n'))
+            {
+                if (row.Contains(":"))
+                {
+                    var tup = row.Split(':');
+                    if (tup.Length != 2)
+                    {
+                        Echo("Err: " + row);
+                        continue;
+                    }
+                    minResourses[tup[0].Trim()] = Convert.ToInt32(tup[1].Trim());
+                }
+            }
+        }
 
         public void reScanObjectExact<T>(List<T> result, String name) where T : class, IMyTerminalBlock
         {
@@ -60,10 +74,6 @@ namespace SpaceEngineers.UWBlockPrograms.GF
             GridTerminalSystem.GetBlocksOfType<T>(result, check);
         }
 
-        public double percentOf(double current, double maximum)
-        {
-            return Math.Round(maximum == 0 ? 100 : 100 * current / maximum);
-        }
         public delegate void OutAction<T>(T x, ref double a, ref double b);
         public double getGridInfo<T>(OutAction<T> update, Func<T, bool> check = null) where T : class, IMyTerminalBlock
         {
@@ -71,9 +81,12 @@ namespace SpaceEngineers.UWBlockPrograms.GF
             double current_capacity = 0;
             double max_capacity = 0;
 
-            if (check == null) {
+            if (check == null)
+            {
                 reScanObjectsLocal(objects);
-            } else {
+            }
+            else
+            {
                 reScanObjectsLocal(objects, check);
             }
 
@@ -108,9 +121,55 @@ namespace SpaceEngineers.UWBlockPrograms.GF
                 max += (double)cargo.GetInventory(0).MaxVolume;
             });
         }
+        public Dictionary<string, int> getGridInventory()
+        {
+            var cargo_blocks = new List<IMyTerminalBlock>();
+            reScanObjectsLocal(cargo_blocks, b => b.HasInventory);
+            var result = new DefaultDictionary<string, int>();
+            var items = new List<MyInventoryItem>();
+            foreach (var block in cargo_blocks)
+            {
+                items.Clear();
+                block.GetInventory(0).GetItems(items);
+                foreach (var item in items)
+                {
+                    result[getName(item.Type)] += (int)item.Amount;
+                }
+            }
 
+            return result;
+        }
+        public List<MyDetectedEntityInfo> getTurretsTargets()
+        {
+            List<MyDetectedEntityInfo> result = new List<MyDetectedEntityInfo>();
+            List<IMyLargeTurretBase> turrets = new List<IMyLargeTurretBase>();
+            reScanObjects(turrets);
+            foreach (IMyLargeTurretBase t in turrets)
+            {
+                if (t.HasTarget)
+                {
+                    MyDetectedEntityInfo trg = t.GetTargetedEntity();
+                    result.Add(trg);
+                }
+            }
+            return result;
+        }
 
-        #region PreludeFooter
-    }
-}
-#endregion
+        public List<string> getDamagedBlocks()
+        {
+            List<string> result = new List<string>();
+            List<IMyTerminalBlock> grid = new List<IMyTerminalBlock>();
+            reScanObjectsLocal(grid);
+            foreach (IMyTerminalBlock terminalBlock in grid)
+            {
+                IMySlimBlock slimBlock = terminalBlock.CubeGrid.GetCubeBlock(terminalBlock.Position);
+                if (slimBlock.CurrentDamage > 0)
+                {
+                    result.Add(terminalBlock.DisplayNameText);
+                }
+            }
+            return result;
+        }
+
+    } //@remove
+} //@remove

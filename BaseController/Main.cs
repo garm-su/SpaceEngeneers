@@ -1,6 +1,4 @@
-﻿
-#region Prelude
-using System;
+﻿using System;
 using System.Linq;
 using System.Text;
 using System.Collections;
@@ -21,12 +19,14 @@ using Sandbox.Game;
 using Sandbox.Common;
 using Sandbox.Common.ObjectBuilders;
 // Change this namespace for each script you create.
-namespace SpaceEngineers.UWBlockPrograms.Sorter
-{
-    public sealed class Program : MyGridProgram
-    {
+namespace SpaceEngineers.UWBlockPrograms.Sorter //@remove
+{ //@remove
+    public sealed class Program : LogLibrary.Program //@remove
+    { //@remove
         // Your code goes between the next #endregion and #region
-        #endregion
+
+        public new string LogTag = "[LOG BASE CONTROLLER]";
+        public new int LogMaxCount = 100;
 
         string
             SKIP = "[SKIP]",
@@ -180,23 +180,6 @@ namespace SpaceEngineers.UWBlockPrograms.Sorter
             foreach (var fc in factories) fc.connect(this);
         }
 
-        public void reScanObjectGroup<T>(String name, List<T> result, bool local = false) where T : class, IMyTerminalBlock
-        {
-            if (local)
-            {
-                GridTerminalSystem.GetBlocksOfType<T>(result,
-                    item => item.CubeGrid == Me.CubeGrid && item.CustomName.Contains(name)
-                );
-            }
-            else
-            {
-                GridTerminalSystem.GetBlocksOfType<T>(result,
-                    item => item.CustomName.Contains(name)
-                );
-            }
-
-            // cargoMain = GridTerminalSystem.SearchBlocksOfName(name, result, i);
-        }
 
         public void addAssembler(IMyAssembler assembler)
         {
@@ -217,7 +200,7 @@ namespace SpaceEngineers.UWBlockPrograms.Sorter
         public void reScanAssemblers()
         {
             var currentAssemblers = new List<IMyAssembler>();
-            reScanObjectGroup<IMyAssembler>(QueueTag, currentAssemblers);
+            reScanObjectGroup(currentAssemblers, QueueTag);
             var oldAssemblersIds = (from assembler in allAssemblers select assembler.GetId()).ToHashSet();
 
             foreach (var assembler in currentAssemblers.Where(assembler => !oldAssemblersIds.Contains(assembler.GetId())))
@@ -321,25 +304,6 @@ namespace SpaceEngineers.UWBlockPrograms.Sorter
             assemblersInUse[construct].Clear();
             assemblersInUse.Remove(construct);
         }
-
-        public class DefaultDictionary<TKey, TValue> : Dictionary<TKey, TValue> where TValue : new()
-        {
-            public new TValue this[TKey key]
-            {
-                get
-                {
-                    TValue val;
-                    if (!TryGetValue(key, out val))
-                    {
-                        val = new TValue();
-                        Add(key, val);
-                    }
-                    return val;
-                }
-                set { base[key] = value; }
-            }
-        }
-
 
         DefaultDictionary<string, DefaultDictionary<string, int>>
             count_objects = new DefaultDictionary<string, DefaultDictionary<string, int>>(),
@@ -743,10 +707,10 @@ namespace SpaceEngineers.UWBlockPrograms.Sorter
             Alarms.next();
 
             reScanAssemblers();
-            reScanObjectGroup<IMyCargoContainer>(UserTag, userCargos); //todo move to one loop
-            reScanObjectGroup<IMyCargoContainer>(ResourcesTag, resourcesCargos);
-            reScanObjectGroup<IMyCargoContainer>(ComponentsTag, componentCargos);
-            reScanObjectGroup<IMyCargoContainer>(AmmoTag, ammoCargos);
+            reScanObjectGroup(userCargos, UserTag); //todo move to one loop
+            reScanObjectGroup(resourcesCargos, ResourcesTag);
+            reScanObjectGroup(componentCargos, ComponentsTag);
+            reScanObjectGroup(ammoCargos, AmmoTag);
 
             Alarms.info("Resources Cargo: " + resourcesCargos.Count.ToString());
             Alarms.info("Component Cargo: " + componentCargos.Count.ToString());
@@ -814,7 +778,6 @@ namespace SpaceEngineers.UWBlockPrograms.Sorter
             }
         }
 
-        #region PreludeFooter
-    }
-}
-#endregion
+
+    } //@remove
+} //@remove
