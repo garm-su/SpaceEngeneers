@@ -1,5 +1,5 @@
-string aimTag = "[AIM]"
-string infoTag = "[INFO]"
+string aimTag = "[AIM]";
+string infoTag = "[INFO]";
 
 public List<string> actions = new List<string>();
 public List<MyDetectedEntityInfo> targets = new List<MyDetectedEntityInfo>();
@@ -7,7 +7,10 @@ public List<MyDetectedEntityInfo> targets = new List<MyDetectedEntityInfo>();
 public MyDetectedEntityInfo lockedTarget;
 public bool autoLock = false;
 public bool autoAim = false;
-public bool lock = false;
+public bool isSearching = false;
+public bool detectAll = true;
+public bool targetLost = false;
+public double scanRange = 1000f;
 public List<IMyUserControllableGun> guns = new List<IMyUserControllableGun>();
 
 //--------------------------------- rescan and config functions -------------------------------------------------------------
@@ -65,10 +68,16 @@ public void Main(string arg)
 	reScanObjectGroupLocal(aimDisplays, aimTag);
 	reScanObjectGroupLocal(aimModeDisplays, infoTag);
 
+//init cameras - todo frontal only
+	foreach(var cam in aimCam)
+	{
+		cam.EnableRaycast = true;
+	}
+
 //execute commands - autolock=on/off, autoaim=on/off, lock, release
 	if (args.Count() > 0)
 	{
-		foreach(a in args)
+		foreach(var a in args)
 		{
 			List<string> param = new List<string>();
 			param = a.Split('=').ToList().ForEach(p => p.Trim());
@@ -82,8 +91,12 @@ public void Main(string arg)
 					autoAim = (param[1] == "on");
 				break;
 
+				case "detectAll":
+					detectAll = (param[1] == "on");
+				break;
+
 				case "lock":
-					lock = true;
+					isSearching = true;
 					Echo("Locking target...");
 				break;
 
@@ -103,15 +116,36 @@ public void Main(string arg)
 	if (lockedTarget != null)
 	{
 		//raycast to predicted position
-		//if target not found?
+		//if target not found? - try N times with random deviations then breakLock
 		//if 
+		string targetInfo = "Target locked\n";
+		targetInfo = "ID:" + Int64.Parse(lockedTarget.EntityId) + "\n";
+		targetInfo = "Type:" + lockedTarget.Type.ToString() + "\n";
+		targetInfo = "Position:" + lockedTarget.Position.ToString() + "\n";
+		targetInfo = "VelocityVector:" + lockedTarget.Velocity.ToString() + "\n";
+		targetInfo = "Velocity:" + lockedTarget.Velocity.Length().ToString() + "\n";
 	}
 	else
 	{
-		if (autoLock || lock)
+		if (autoLock || isSearching) 
 		{
-			//raycast front 1km
-			//if target locked lock = false, set lockedTarget
+			//raycast front 1km all aim cameras
+			foreach(var cam in aimCams)
+			{
+				if (cam.CanScan(scanRange) && cam.TimeUntilScan(scanRange) == 0)
+				{
+					MyDetectedEntityInfo t = cam.raycast(scanRange);
+					if (t != null && (t.Type == SmallGrid || t.Type == LargeGrid || t.Type == CharacterHuman || t.Type == CharacterOther))
+					{
+						if (detectAll || t.Relationship == Enemies)
+						{
+							lockedTarget = t;
+							isSearching == false;
+							break;
+						}
+					}
+				}
+			}
 		}
 	}
 	if (lockedTarget != null)
@@ -120,7 +154,7 @@ public void Main(string arg)
 	}
 	if (autoAim)
 	{
-		List<> gyros = new List<>();
+		//List<> gyros = new List<>();
 		//set angular speed for gyros 
 	}
 }
