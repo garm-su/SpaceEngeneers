@@ -49,6 +49,22 @@ namespace SpaceEngineers.UWBlockPrograms.Helpers //@remove
             return type.TypeId + '.' + type.SubtypeId;
         }
 
+        public String number(double count)
+        {
+            var prefix = "  ";
+            if (count >= 1e6)
+            {
+                count /= 1e6;
+                prefix = "M";
+            }
+            else if (count >= 1e3)
+            {
+                count /= 1e3;
+                prefix = "K";
+            }
 
+            return String.Format("{0,3:0.0}", count) + prefix;
+
+        }
     }//@remove
 }//@remove

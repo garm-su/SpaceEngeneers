@@ -88,6 +88,8 @@
     <Compile Include="IceBase.cs" />
 
     <Compile Include="BaseController/Main.cs" />
+    <Compile Include="BaseController/Alarm.cs" />
+    <Compile Include="BaseController/FactoryController.cs" />
 
     <Compile Include="GridController/Main.cs" />
     
