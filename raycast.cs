@@ -1,17 +1,19 @@
 string aimTag = "[AIM]";
 string infoTag = "[INFO]";
 
-public List<string> actions = new List<string>();
-public List<MyDetectedEntityInfo> targets = new List<MyDetectedEntityInfo>();
+List<string> actions = new List<string>();
+List<MyDetectedEntityInfo> targets = new List<MyDetectedEntityInfo>();
 
-public MyDetectedEntityInfo lockedTarget;
-public bool autoLock = false;
-public bool autoAim = false;
-public bool isSearching = false;
-public bool detectAll = true;
-public bool targetLost = false;
-public double scanRange = 1000f;
-public List<IMyUserControllableGun> guns = new List<IMyUserControllableGun>();
+MyDetectedEntityInfo lockedTarget;
+bool autoLock = false;
+bool autoAim = false;
+bool isSearching = false;
+bool detectAll = true;
+bool targetLost = false;
+double scanRange = 1000f;
+double timeUnit = 1/6; //default;
+double maxSpeedValue = 150f;
+List<IMyUserControllableGun> guns = new List<IMyUserControllableGun>();
 
 //--------------------------------- rescan and config functions -------------------------------------------------------------
 
@@ -52,7 +54,7 @@ public Program()
 	Runtime.UpdateFrequency = UpdateFrequency.Update10;
 }
 
-public void Main(string arg)
+void Main(string arg)
 {
 //parse args
 	List<string> args = new List<string>();
@@ -117,7 +119,7 @@ public void Main(string arg)
 	}
 
 //execute runtime	
-	if (!lockedTarget.IsEmpty())
+	if (!lockedTarget.IsEmpty() && !isSearching)
 	{
 		//raycast to predicted position
 		//if target not found? - try N times with random deviations then breakLock
@@ -128,6 +130,10 @@ public void Main(string arg)
 		targetInfo = targetInfo + "Position:" + lockedTarget.Position.ToString() + "\n";
 		targetInfo = targetInfo + "VelocityVector:" + lockedTarget.Velocity.ToString() + "\n";
 		targetInfo = targetInfo + "Velocity:" + lockedTarget.Velocity.Length().ToString() + "\n";
+		foreach(var d in aimModeDisplays)
+		{
+			d.WriteText(targetInfo);
+		}
 		Echo(targetInfo);
 	}
 	else

@@ -29,44 +29,24 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
         //all terminalblocks
         List<IMyTerminalBlock> allTBlocks = new List<IMyTerminalBlock>();
         //all armor blocks - be defined
-
-        //connect,Коннектор Низ Таскалище 02,TB Handle Connect Таскалище 02
-        //Battery,TB Handle Start Таскалище 02
-        //cargoLoad,,TB Handle Start Таскалище 02
-        //maxSpeed,50
-
-
-        //cargoLoad,,Таскало 01 TB handleCharged
-        //cargoSave,
-        //Battery,Таскало 01 TB handleCharged
-        //connect,Таскало 01 TB handleConnected
-        //batteryCharge,Recharge
-        //batteryCharge,Auto
-        //MyObjectBuilder_Ore.Ice: 3000		
-        //MyObjectBuilder_Ore.Iron: 43000
-        //MyObjectBuilder_Ore.Stone: 43000
-        //MyObjectBuilder_Ingot.Iron: 42000
-        //MyObjectBuilder_Ore.Gold: 42000
-        //MyObjectBuilder_Component.SteelPlate: 3000
-        //MyObjectBuilder_AmmoMagazine.NATO_25x184mm: 3000
-
         //Tags
         const string SKIP = "[SKIP]";
         const string StatusTag = "[STATUS]";
         const string RequestTag = "[REQUEST]";
         const string infoTag = "[INFO]";
+        const string aimTag = "[AIM]";
 
         public new string LogTag = "[LOG]";
         const double BATTERY_MAX_LOAD = 0.95;
 
         Color mainColor = new Color(0, 255, 0);
 
+        ArgParser args;
+        bool gridStateSaved = false;
         string statusChannelTag = "RDOStatusChannel";
         string commandChannelTag = "RDOCommandChannel";
         string additionalStatus = "";
-        List<string> actions = new List<string>();
 
-        bool setupcomplete = false;
         bool checkDestroyedBlocks = true;
         bool lockedState = false;
 
@@ -102,15 +82,59 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
         IMyBroadcastListener statusListener;
 
         //--------------------------------- rescan and config functions --------------------------------
-        public void parseArgs(string args)
+        public class ArgParser
         {
-            //todo - move parse args here
-            actions.Clear();
-
-            //actions
+            private Dictionary<string,string> modes;
+            private List<string> actions;
+            private Dictionary<string,int> values;
+            public int Count
+            {
+                get; set;
+            }
+            public ArgParser(string arg)
+            {
+                List<string> argList = arg.Split(',').Select(a => a.Trim()).ToList();
+                foreach(var elem in argList)
+                {
+                    List<string> currentElem = elem.Split('=').Select(a => a.Trim()).ToList();                    
+                    if (currentElem.Count() > 1)
+                    {
+                        int val;
+                        if (Int32.TryParse(currentElem[1], val))
+                        {
+                            values.Add(currentElem[0], val);
+                        }
+                        else
+                        {
+                            modes.Add(currentElem[0], currentElem[1]);                            
+                        }
+                    }
+                    else
+                    {
+                        actions.Add(currentElem[0]);
+                    }
+                }
+            }
+            public bool isInModes(string argName)
+            {
+                return modes.ContainsKey(argName);
+            }
+            public bool isInActions(string argName)
+            {
+                return actions.Contains(argName);
+            }            
+            public string getModeValue(string argName)
+            {
+                if(modes.ContainsKey(argName))
+                {
+                    return modes[argName];
+                }
+                else
+                {
+                    return "";
+                }
+            }
         }
-
-        //-----------------------------------------------------------------
 
         //---------------------------- grid status info ----------------------------------
 
@@ -520,26 +544,11 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
         //===========================================================================================
 
         //------------------------------------ arg commands ------------------------------------------
-        public void fixGridState()
+        public void saveGridState()
         {
             reScanObjectsLocal(allTBlocks);
             //todo save armor block state
-
-        }
-
-        public void Setup()
-        {
-            reScanObjectsLocal(antenna);
-
-            if (antenna.Count() > 0)
-            {
-                Echo("Setup complete");
-                setupcomplete = true;
-            }
-            else
-            {
-                Echo("Setup failed. No antenna found");
-            }
+            gridStateSaved = true;
         }
 
         public Program()
@@ -554,13 +563,13 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
             //GridTerminalSystem.GetBlockGroupWithName("");
             logger.write("Main " + arg);
             if (arg.StartsWith(LogTag)) return;
-
+            args = new ArgParser(arg);
             List<IMyTextPanel> infoDisplays = new List<IMyTextPanel>();
             reScanObjectGroupLocal(infoDisplays, infoTag);
-            foreach (var display in infoDisplays)
+/*            foreach (var display in infoDisplays)
             {
                 display.WriteText(showInventory(getGridInventory(), 30));
-            }
+            }*/
 
             checkMaxSpeed();
 
@@ -634,7 +643,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
                         Echo("Manual override lock status");
                         break;
                     case "fix":
-                        fixGridState();
+                        saveGridState();
                         Echo("Grid state saved");
                         break;
                     default:
@@ -642,12 +651,9 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
                 }
             }
 
-            if (!setupcomplete)
+            if (!gridStateSaved)
             {
-                //If setupcomplete is false, run Setup method.
-                Echo("Running setup");
-                Setup();
-                fixGridState();
+                saveGridState();
             }
             else
             {
