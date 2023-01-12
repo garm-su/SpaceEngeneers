@@ -56,20 +56,24 @@ public void Main(string arg)
 {
 //parse args
 	List<string> args = new List<string>();
-	args = arg.Split(",").ToList().ForEach(p => p.Trim());
+	Echo(arg);
+	if (arg != "")
+	{
+		args = arg.Split(',').ToList();
+	}
 //rescan blocks
 
 	List<IMyCameraBlock> aimCams = new List<IMyCameraBlock>(); //cameras
 	List<IMySensorBlock> aimSensors = new List<IMySensorBlock>(); //sensors
-	List<IMyDisplayPanel> aimDisplays = new List<IMyDisplayPanel>(); //aim lcds
-	List<IMyDisplayPanel> aimModeDisplays = new List<IMyDisplayPanel>(); //aiming modes info lcds
+	List<IMyTextPanel> aimDisplays = new List<IMyTextPanel>(); //aim lcds
+	List<IMyTextPanel> aimModeDisplays = new List<IMyTextPanel>(); //aiming modes info lcds
 	reScanObjectGroupLocal(aimCams, aimTag);
 	reScanObjectGroupLocal(aimSensors, aimTag);
 	reScanObjectGroupLocal(aimDisplays, aimTag);
 	reScanObjectGroupLocal(aimModeDisplays, infoTag);
 
 //init cameras - todo frontal only
-	foreach(var cam in aimCam)
+	foreach(var cam in aimCams)
 	{
 		cam.EnableRaycast = true;
 	}
@@ -80,7 +84,7 @@ public void Main(string arg)
 		foreach(var a in args)
 		{
 			List<string> param = new List<string>();
-			param = a.Split('=').ToList().ForEach(p => p.Trim());
+			param = a.Split('=').ToList();
 			switch (param[0])
 			{
 				case "autolock":
@@ -101,7 +105,7 @@ public void Main(string arg)
 				break;
 
 				case "release":
-					lockedTarget = null;
+					lockedTarget = new MyDetectedEntityInfo();
 					Echo("Target released");
 				break;
 
@@ -113,34 +117,36 @@ public void Main(string arg)
 	}
 
 //execute runtime	
-	if (lockedTarget != null)
+	if (!lockedTarget.IsEmpty())
 	{
 		//raycast to predicted position
 		//if target not found? - try N times with random deviations then breakLock
 		//if 
 		string targetInfo = "Target locked\n";
-		targetInfo = "ID:" + Int64.Parse(lockedTarget.EntityId) + "\n";
-		targetInfo = "Type:" + lockedTarget.Type.ToString() + "\n";
-		targetInfo = "Position:" + lockedTarget.Position.ToString() + "\n";
-		targetInfo = "VelocityVector:" + lockedTarget.Velocity.ToString() + "\n";
-		targetInfo = "Velocity:" + lockedTarget.Velocity.Length().ToString() + "\n";
+		targetInfo = targetInfo + "ID:" + lockedTarget.EntityId.ToString() + "\n";
+		targetInfo = targetInfo + "Type:" + lockedTarget.Type.ToString() + "\n";
+		targetInfo = targetInfo + "Position:" + lockedTarget.Position.ToString() + "\n";
+		targetInfo = targetInfo + "VelocityVector:" + lockedTarget.Velocity.ToString() + "\n";
+		targetInfo = targetInfo + "Velocity:" + lockedTarget.Velocity.Length().ToString() + "\n";
+		Echo(targetInfo);
 	}
 	else
 	{
 		if (autoLock || isSearching) 
 		{
 			//raycast front 1km all aim cameras
+			Echo("Locking target...");
 			foreach(var cam in aimCams)
 			{
 				if (cam.CanScan(scanRange) && cam.TimeUntilScan(scanRange) == 0)
 				{
-					MyDetectedEntityInfo t = cam.raycast(scanRange);
-					if (t != null && (t.Type == SmallGrid || t.Type == LargeGrid || t.Type == CharacterHuman || t.Type == CharacterOther))
+					MyDetectedEntityInfo t = cam.Raycast(scanRange);
+					if (!t.IsEmpty() && (t.Type == MyDetectedEntityType.SmallGrid || t.Type == MyDetectedEntityType.LargeGrid || t.Type == MyDetectedEntityType.CharacterHuman || t.Type == MyDetectedEntityType.CharacterOther))
 					{
-						if (detectAll || t.Relationship == Enemies)
+						if (detectAll || t.Relationship == MyRelationsBetweenPlayerAndBlock.Enemies)
 						{
 							lockedTarget = t;
-							isSearching == false;
+							isSearching = false;
 							break;
 						}
 					}
@@ -148,7 +154,7 @@ public void Main(string arg)
 			}
 		}
 	}
-	if (lockedTarget != null)
+	if (!lockedTarget.IsEmpty())
 	{
 		//predict next position
 	}
