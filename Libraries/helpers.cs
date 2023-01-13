@@ -49,7 +49,7 @@ namespace SpaceEngineers.UWBlockPrograms.Helpers //@remove
             return type.TypeId + '.' + type.SubtypeId;
         }
 
-        public String number(double count)
+        public String number(double count, int len = 6)
         {
             var prefix = "  ";
             if (count >= 1e6)
@@ -63,7 +63,7 @@ namespace SpaceEngineers.UWBlockPrograms.Helpers //@remove
                 prefix = "K";
             }
 
-            return String.Format("{0,3:0.0}", count) + prefix;
+            return String.Format("{0," + (len - 3) + ":0.0}", count) + prefix;
 
         }
     }//@remove

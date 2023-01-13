@@ -23,54 +23,16 @@ using static SpaceEngineers.UWBlockPrograms.LogLibrary.Program;
 // Change this namespace for each script you create.
 namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
 { //@remove
-    public class Program : LogLibrary.Program //@remove
+    public class Program : GridStatusActions.Program //@remove
     { //@remove
         // Your code goes between the next #endregion and #region
         //all terminalblocks
-        List<IMyTerminalBlock> allTBlocks = new List<IMyTerminalBlock>();
+        
         //all armor blocks - be defined
-        //Tags
-        const string SKIP = "[SKIP]";
-        const string StatusTag = "[STATUS]";
-        const string RequestTag = "[REQUEST]";
-        const string infoTag = "[INFO]";
-        const string aimTag = "[AIM]";
 
-        public new string LogTag = "[LOG]";
-        const double BATTERY_MAX_LOAD = 0.95;
-
-        Color mainColor = new Color(0, 255, 0);
-
-        ArgParser args;
-        bool gridStateSaved = false;
-        string statusChannelTag = "RDOStatusChannel";
-        string commandChannelTag = "RDOCommandChannel";
-        string additionalStatus = "";
-
-        bool checkDestroyedBlocks = true;
         bool lockedState = false;
-
-        public new int LogMaxCount = 100;
         Log logger;
-
-        int maxSpeed = 0;
-
-        //alert tresholds
-        double energyTreshold = 0.25; //% of max capacity, default - 25%
-        double gasTreshold = 0.25; //% of max capacity, default - 25%
-        double uraniumTreshold = 0; //kg
-        double damageTreshold = 0.2; //% of terminal blocks, default - 20%
-
-        //grid info
-        double gridCharge = 0;
-        double gridGas = 0;
-        double gridLoad = 0;
-        double damagedBlockRatio = 0;
-        double destroyedAmount = 0;
-        List<string> gridDamagedBlocks = new List<string>();
-        List<string> gridDestroyedBlocks = new List<string>();
-        Dictionary<string, int> gridInventory = new Dictionary<string, int>();
-        List<MyDetectedEntityInfo> targets = new List<MyDetectedEntityInfo>();
+        ArgParser args;
 
         //item order
         Dictionary<string, int> ammoDefaultAmount = new Dictionary<string, int>(); //subtype_id, ammount
@@ -84,9 +46,9 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
         //--------------------------------- rescan and config functions --------------------------------
         public class ArgParser
         {
-            private Dictionary<string,string> modes;
+            private Dictionary<string, string> modes;
             private List<string> actions;
-            private Dictionary<string,int> values;
+            private Dictionary<string, int> values;
             public int Count
             {
                 get; set;
@@ -94,19 +56,19 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
             public ArgParser(string arg)
             {
                 List<string> argList = arg.Split(',').Select(a => a.Trim()).ToList();
-                foreach(var elem in argList)
+                foreach (var elem in argList)
                 {
-                    List<string> currentElem = elem.Split('=').Select(a => a.Trim()).ToList();                    
+                    List<string> currentElem = elem.Split('=').Select(a => a.Trim()).ToList();
                     if (currentElem.Count() > 1)
                     {
                         int val;
-                        if (Int32.TryParse(currentElem[1], val))
+                        if (Int32.TryParse(currentElem[1], out val))
                         {
                             values.Add(currentElem[0], val);
                         }
                         else
                         {
-                            modes.Add(currentElem[0], currentElem[1]);                            
+                            modes.Add(currentElem[0], currentElem[1]);
                         }
                     }
                     else
@@ -122,10 +84,10 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
             public bool isInActions(string argName)
             {
                 return actions.Contains(argName);
-            }            
+            }
             public string getModeValue(string argName)
             {
-                if(modes.ContainsKey(argName))
+                if (modes.ContainsKey(argName))
                 {
                     return modes[argName];
                 }
@@ -139,19 +101,6 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
         //---------------------------- grid status info ----------------------------------
 
 
-        public JsonList getEnemyTargetsData()
-        {
-            JsonList result = new JsonList("Targets");
-            foreach (MyDetectedEntityInfo target in targets)
-            {
-                var t = new JsonObject("");
-                t.Add(new JsonPrimitive("Name", target.Name));
-                t.Add(new JsonPrimitive("Type", target.Type.ToString()));
-                t.Add(new JsonPrimitive("Position", target.Position.ToString()));
-                result.Add(t);
-            }
-            return result;
-        }
 
         public bool isAttacked()
         {
@@ -174,17 +123,6 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
             return result;
         }
 
-        public double getGridVelocity()
-        {
-            double result = 0;
-            List<IMyShipController> controls = new List<IMyShipController>();
-            reScanObjectsLocal(controls);
-            if (controls.Count() > 0)
-            {
-                result = (double)controls[0].GetShipVelocities().LinearVelocity.Length();
-            }
-            return result;
-        }
 
         public bool isLowFuel(out string ftype)
         {
@@ -209,34 +147,6 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
                 ftype = "[" + String.Join(",", ftypes) + "]";
             }
             return result;
-        }
-
-        public string showInventory(Dictionary<string, int> items, int strsize)
-        {
-            string itemStr = "";
-            foreach (var i in items)
-            {
-                int len = strsize - i.Key.Split('.')[1].Length - i.Value.ToString().Length;
-                itemStr += i.Key.Split('.')[1] + " ";
-                if (len >= 0)
-                {
-                    string t = new string(' ', len);
-                    itemStr += t;
-                }
-                itemStr += i.Value.ToString() + "\n";
-            }
-            return itemStr;
-        }
-
-        public void setAdditionalStatus(String s)
-        {
-            additionalStatus = s;
-
-            var surface = Me.GetSurface(0);
-            surface.Alignment = TextAlignment.CENTER;
-            surface.FontColor = mainColor;
-            surface.FontSize = 4;
-            surface.WriteText(s);
         }
 
         public string getStatus()
@@ -314,242 +224,6 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
 
         }
 
-        public List<string> getDestroyedBlocks()
-        {
-            List<string> result = new List<string>();
-            if (checkDestroyedBlocks)
-            {
-                List<IMyTerminalBlock> currentState = new List<IMyTerminalBlock>();
-                reScanObjectsLocal(currentState);
-                destroyedAmount = allTBlocks.Count() - currentState.Count();
-                //if block in allBlocks and not in current state add Block.CustomName to result;
-            }
-            return result;
-        }
-
-        public void updateGridInfo()
-        {
-            gridCharge = getGridBatteryCharge();
-            gridGas = getGridGasAmount("Hydrogen");
-            gridLoad = getGridUsedCargoSpace();
-            gridInventory = getGridInventory();
-            targets = getTurretsTargets();
-            gridDamagedBlocks = getDamagedBlocks();
-            gridDestroyedBlocks = getDestroyedBlocks();
-            damagedBlockRatio = gridDamagedBlocks.Count() / allTBlocks.Count();
-            destroyedAmount = gridDestroyedBlocks.Count();
-        }
-        //===================================================================================
-
-        //------------------------- car helper -----------------------------------------------
-        private void setMaxSpeed(string v)
-        {
-            int newSpeed;
-            if (!Int32.TryParse(v, out newSpeed))
-            {
-                Echo("Wrong int " + v);
-                return;
-            }
-
-            maxSpeed = newSpeed;
-
-            logger.write("Setup max speed");
-
-            var irs = new List<IMyRemoteControl>();
-            reScanObjectsLocal(irs, ir => ir.IsAutoPilotEnabled);
-            irs.ForEach(ir => ir.SpeedLimit = newSpeed);
-        }
-
-        public void checkMaxSpeed()
-        {
-            var irs = new List<IMyRemoteControl>();
-            reScanObjectsLocal(irs, ir => ir.IsAutoPilotEnabled);
-            if (irs.Count != 1) return;
-            var rc = irs[0];
-
-            var distance = (Me.CubeGrid.GridIntegerToWorld(Me.Position) - rc.CurrentWaypoint.Coords).Length();
-            if (distance < 90)
-            {
-                rc.SpeedLimit = (float)(maxSpeed * (distance + 10) / 100);
-            }
-        }
-
-        public void cargoLoad(string group, String after)
-        {
-            logger.write("cargoLoad: " + group);
-            var blocks = new List<IMyTerminalBlock>();
-            reScanObjectsLocal(blocks, b => b.HasInventory);
-            var needResources = new Dictionary<string, int>();
-
-            var outerCargo = new List<IMyCargoContainer>();
-            reScanObjects(outerCargo, b => b.CubeGrid != Me.CubeGrid);
-            if (outerCargo.Count == 0)
-            {
-                logger.write("No external cargos");
-                return;
-            }
-
-            bool full = true;
-            double need = 0, found = 0;
-
-            foreach (var block in blocks)
-            {
-                reReadConfig(needResources, block.CustomData);
-                var needResCount = needResources.Values.Sum();
-                if (needResCount == 0) continue;
-                need += needResCount;
-                var items = new List<MyInventoryItem>();
-                for (int j = 0; j < block.InventoryCount; j++)
-                {
-                    block.GetInventory(j).GetItems(items);
-                    foreach (var item in items)
-                    {
-                        var resourceName = getName(item.Type);
-                        if (needResources.ContainsKey(resourceName))
-                        {
-                            needResources[resourceName] -= (int)item.Amount;
-                            found += (int)item.Amount;
-                        }
-                    }
-                }
-
-                var currentfull = moveResources(
-                    outerCargo,
-                    block,
-                    needResources.Where(r => r.Value > 0).ToDictionary(i => i.Key, i => i.Value)
-                );
-                if (!currentfull)
-                {
-                    logger.write("NotFull: " + block.CustomName);
-                }
-                full &= currentfull;
-            }
-
-            if (full)
-            {
-                setAdditionalStatus("");
-                runTbByName(after);
-            }
-            else
-            {
-                setAdditionalStatus("C." + (int)(need == 0 ? 100 : 100 * found / need) + "%");
-            }
-        }
-
-        private bool moveResources(List<IMyCargoContainer> outerCargo, IMyTerminalBlock block, Dictionary<string, int> dictionary)
-        {
-            logger.write("Move to " + dictionary.Keys.Count() + " " + outerCargo.Count() + " " + block.CustomName);
-            if (!block.HasInventory || dictionary.Count == 0) return true;
-            IMyInventory sourse, destination = block.GetInventory();
-            if (destination.IsFull) return true;
-
-            for (int i = 0; i < outerCargo.Count; i++)
-            {
-                if (outerCargo[i].CustomName.Contains(SKIP)) continue;
-
-                for (int j = 0; j < outerCargo[i].InventoryCount; j++)
-                {
-                    var items = new List<MyInventoryItem>();
-                    sourse = outerCargo[i].GetInventory(j);
-                    sourse.GetItems(items);
-                    if (!sourse.IsConnectedTo(destination)) continue;
-                    for (int k = 0; k < items.Count; k++)
-                    {
-                        var item = items[k];
-                        var resourceName = getName(item.Type);
-                        if (dictionary.ContainsKey(resourceName) && dictionary[resourceName] > 0)
-                        {
-                            var countToMove = Math.Min(dictionary[resourceName], (int)item.Amount);
-                            sourse.TransferItemTo(destination, k, null, true);
-                            dictionary[resourceName] -= countToMove;
-                        }
-                    }
-                }
-            }
-            return false;
-        }
-
-        public void cargoSave(string group)
-        {
-            logger.write("cargoSave: " + group);
-            var blocks = new List<IMyTerminalBlock>();
-            reScanObjectsLocal(blocks, b => b.HasInventory);
-            var info = new List<String>();
-
-            foreach (var block in blocks)
-            {
-                info.Clear();
-                var items = new List<MyInventoryItem>();
-                for (int j = 0; j < block.InventoryCount; j++)
-                {
-                    block.GetInventory(j).GetItems(items);
-                    foreach (var item in items)
-                    {
-                        info.Add(getName(item.Type) + ": " + item.Amount.ToString());
-                    }
-                }
-                block.CustomData = String.Join("\n", info);
-            }
-        }
-
-        public void connect(String connectorName, String tbName)
-        {
-            var blocks = new List<IMyShipConnector>();
-            reScanObjectExactLocal(blocks, connectorName);
-            logger.write("Connect \"" + connectorName + "\" (" + blocks.Count + ")");
-            foreach (var connector in blocks)
-            {
-                connector.Connect();
-                if (connector.Status == MyShipConnectorStatus.Connected)
-                {
-                    runTbByName(tbName);
-                    return;
-                }
-            }
-        }
-
-        public void runTbByName(String name)
-        {
-            var tbs = new List<IMyTimerBlock>();
-            reScanObjectExactLocal(tbs, name);
-            tbs.ForEach(tb => tb.Trigger());
-        }
-
-        public void batteryLoad(String after)
-        {
-            logger.write("batteryLoad");
-            var curLoad = getGridBatteryCharge();
-            if (curLoad > BATTERY_MAX_LOAD)
-            {
-                setAdditionalStatus("");
-                runTbByName(after);
-            }
-            else
-            {
-                setAdditionalStatus("B." + (int)(100 * curLoad) + "%");
-            }
-        }
-
-        public void batteryCharge(string type)
-        {
-            logger.write("batteryCharge: " + type);
-            ChargeMode mode;
-            if (!Enum.TryParse(type, out mode)) return;
-
-            List<IMyBatteryBlock> batteries = new List<IMyBatteryBlock>();
-            reScanObjectsLocal(batteries);
-            batteries.ForEach(bat => bat.ChargeMode = mode);
-        }
-
-        //===========================================================================================
-
-        //------------------------------------ arg commands ------------------------------------------
-        public void saveGridState()
-        {
-            reScanObjectsLocal(allTBlocks);
-            //todo save armor block state
-            gridStateSaved = true;
-        }
 
         public Program()
         {
@@ -563,13 +237,13 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
             //GridTerminalSystem.GetBlockGroupWithName("");
             logger.write("Main " + arg);
             if (arg.StartsWith(LogTag)) return;
-            args = new ArgParser(arg);
+            // args = new ArgParser(arg);
             List<IMyTextPanel> infoDisplays = new List<IMyTextPanel>();
             reScanObjectGroupLocal(infoDisplays, infoTag);
-/*            foreach (var display in infoDisplays)
-            {
-                display.WriteText(showInventory(getGridInventory(), 30));
-            }*/
+            /*            foreach (var display in infoDisplays)
+                        {
+                            display.WriteText(showInventory(getGridInventory(), 30));
+                        }*/
 
             checkMaxSpeed();
 
