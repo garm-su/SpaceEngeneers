@@ -26,29 +26,31 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusConfig //@remove
     public class Program : LogLibrary.Program //@remove
     { //@remove
 
-        const string SKIP = "[SKIP]";
-        const string StatusTag = "[STATUS]";
-        const string RequestTag = "[REQUEST]";
-        const string infoTag = "[INFO]";
-        const string aimTag = "[AIM]";
+        public const string SKIP = "[SKIP]";
+        public const string StatusTag = "[STATUS]";
+        public const string RequestTag = "[REQUEST]";
+        public const string infoTag = "[INFO]";
+        public const string aimTag = "[AIM]";
 
         public new string LogTag = "[LOG]";
-        const double BATTERY_MAX_LOAD = 0.95;
+        public const double BATTERY_MAX_LOAD = 0.95;
 
-        string statusChannelTag = "RDOStatusChannel";
-        string commandChannelTag = "RDOCommandChannel";
+        public string statusChannelTag = "RDOStatusChannel";
+        public string commandChannelTag = "RDOCommandChannel";
 
 
-        bool checkDestroyedBlocks = true;
+        public bool checkDestroyedBlocks = true;
 
         public new int LogMaxCount = 100;
 
 
         //alert tresholds
-        double energyTreshold = 0.25; //% of max capacity, default - 25%
-        double gasTreshold = 0.25; //% of max capacity, default - 25%
-        double uraniumTreshold = 0; //kg
-        double damageTreshold = 0.2; //% of terminal blocks, default - 20%
+        public double energyTreshold = 0.25; //% of max capacity, default - 25%
+        public double gasTreshold = 0.25; //% of max capacity, default - 25%
+        public double uraniumTreshold = 0; //kg
+        public double damageTreshold = 0.2; //% of terminal blocks, default - 20%
+
+        public Log logger;
 
     }  //@remove
 }  //@remove

@@ -23,22 +23,22 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
     public class Program : GridStatusLcd.Program //@remove
     { //@remove
 
-        List<IMyTerminalBlock> allTBlocks = new List<IMyTerminalBlock>();
+        public List<IMyTerminalBlock> allTBlocks = new List<IMyTerminalBlock>();
 
-        string additionalStatus = "";
+        public string additionalStatus = "";
 
         //grid info
-        double gridCharge = 0;
-        double gridGas = 0;
-        double gridLoad = 0;
-        double damagedBlockRatio = 0;
-        double destroyedAmount = 0;
-        List<string> gridDamagedBlocks = new List<string>();
+        public double gridCharge = 0;
+        public double gridGas = 0;
+        public double gridLoad = 0;
+        public double damagedBlockRatio = 0;
+        public double destroyedAmount = 0;
+        public List<string> gridDamagedBlocks = new List<string>();
         List<string> gridDestroyedBlocks = new List<string>();
         Dictionary<string, int> gridInventory = new Dictionary<string, int>();
-        List<MyDetectedEntityInfo> targets = new List<MyDetectedEntityInfo>();
+        public List<MyDetectedEntityInfo> targets = new List<MyDetectedEntityInfo>();
 
-        bool gridStateSaved = false;
+        public bool gridStateSaved = false;
 
         public void setAdditionalStatus(String s)
         {
@@ -57,7 +57,8 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
             reScanObjectsLocal<IMyTerminalBlock>(cargo_blocks, b => b.HasInventory);
             Dictionary<string, int> result = new Dictionary<string, int>();
             var items = new List<MyInventoryItem>();
-            foreach (var cargo_block in cargo_blocks){
+            foreach (var cargo_block in cargo_blocks)
+            {
                 cargo_block.GetInventory(0).GetItems(items);
                 foreach (var item in items)
                 {
@@ -119,8 +120,9 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
         //===========================================================================================
 
         //------------------------------------ arg commands ------------------------------------------
-        public void saveGridState()
+        public void saveGridState(bool update = false)
         {
+            if (!update || gridStateSaved) return;
             reScanObjectsLocal(allTBlocks);
             //todo save armor block state
             gridStateSaved = true;

@@ -20,9 +20,9 @@ using VRage.Game.GUI.TextPanel;
 // Change this namespace for each script you create.
 namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
 { //@remove
-    public class Programы : GridStatusConfig.Program //@remove
+    public class Program : GridStatusConfig.Program //@remove
     { //@remove
-        Color mainColor = new Color(0, 255, 0);
+        public Color mainColor = new Color(0, 255, 0);
 
         public void showInventory(IMyTextSurface display, Dictionary<string, int> items, int strsize)
         {

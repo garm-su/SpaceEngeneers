@@ -25,13 +25,13 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
 { //@remove
     public class Program : GridStatusActions.Program //@remove
     { //@remove
-        // Your code goes between the next #endregion and #region
-        //all terminalblocks
-        
+      // Your code goes between the next #endregion and #region
+      //all terminalblocks
+
         //all armor blocks - be defined
 
         bool lockedState = false;
-        Log logger;
+
         ArgParser args;
 
         //item order
@@ -317,7 +317,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
                         Echo("Manual override lock status");
                         break;
                     case "fix":
-                        saveGridState();
+                        saveGridState(update: true);
                         Echo("Grid state saved");
                         break;
                     default:
@@ -325,46 +325,41 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
                 }
             }
 
-            if (!gridStateSaved)
+            saveGridState();
+
+            List<IMyTextPanel> status_displays = new List<IMyTextPanel>();
+            List<IMyTextPanel> request_displays = new List<IMyTextPanel>();
+
+
+            reScanObjectGroupLocal(status_displays, StatusTag);
+            reScanObjectGroupLocal(request_displays, RequestTag);
+            targets.Clear();
+            updateGridInfo();
+            string statusMessage = getStatus();
+            status_displays.ForEach(display => display.WriteText(statusMessage));
+
+            //statusListener = IGC.RegisterBroadcastListener(statusChannelTag);
+            IGC.SendBroadcastMessage(statusChannelTag, statusMessage, TransmissionDistance.CurrentConstruct);
+
+            commandListener = IGC.RegisterBroadcastListener(commandChannelTag);
+            while (commandListener.HasPendingMessage)
             {
-                saveGridState();
-            }
-            else
-            {
-
-                List<IMyTextPanel> status_displays = new List<IMyTextPanel>();
-                List<IMyTextPanel> request_displays = new List<IMyTextPanel>();
-
-
-                reScanObjectGroupLocal(status_displays, StatusTag);
-                reScanObjectGroupLocal(request_displays, RequestTag);
-                targets.Clear();
-                updateGridInfo();
-                string statusMessage = getStatus();
-                status_displays.ForEach(display => display.WriteText(statusMessage));
-
-                //statusListener = IGC.RegisterBroadcastListener(statusChannelTag);
-                IGC.SendBroadcastMessage(statusChannelTag, statusMessage, TransmissionDistance.CurrentConstruct);
-
-                commandListener = IGC.RegisterBroadcastListener(commandChannelTag);
-                while (commandListener.HasPendingMessage)
+                string message;
+                MyIGCMessage newRequest = commandListener.AcceptMessage();
+                if (commandListener.Tag == commandChannelTag)
                 {
-                    string message;
-                    MyIGCMessage newRequest = commandListener.AcceptMessage();
-                    if (commandListener.Tag == commandChannelTag)
+                    if (newRequest.Data is string)
                     {
-                        if (newRequest.Data is string)
+                        message = newRequest.Data.ToString();
+                        foreach (IMyTextSurface d in request_displays)
                         {
-                            message = newRequest.Data.ToString();
-                            foreach (IMyTextSurface d in request_displays)
-                            {
-                                d.WriteText(message);
-                            }
+                            d.WriteText(message);
                         }
                     }
                 }
-
             }
+
+
         }
 
     }  //@remove
