@@ -20,7 +20,7 @@ using VRage.Game.GUI.TextPanel;
 // Change this namespace for each script you create.
 namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
 { //@remove
-    public class Program : GridStatusLcd.Program //@remove
+    public class Program : GridStatusConfig.Program //@remove
     { //@remove
 
         public List<IMyTerminalBlock> allTBlocks = new List<IMyTerminalBlock>();
@@ -122,7 +122,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
         //------------------------------------ arg commands ------------------------------------------
         public void saveGridState(bool update = false)
         {
-            if (!update || gridStateSaved) return;
+            if (gridStateSaved && !update) return;
             reScanObjectsLocal(allTBlocks);
             //todo save armor block state
             gridStateSaved = true;

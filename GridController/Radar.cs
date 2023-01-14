@@ -23,7 +23,7 @@ using static SpaceEngineers.UWBlockPrograms.LogLibrary.Program;
 // Change this namespace for each script you create.
 namespace SpaceEngineers.UWBlockPrograms.GridStatusRadar //@remove
 { //@remove
-    public class Program : GridStatusInfo.Program //@remove
+    public class Program : GridStatusLcd.Program //@remove
     { //@remove
 
         public JsonList getEnemyTargetsData()

@@ -25,13 +25,15 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusConfig //@remove
 { //@remove
     public class Program : LogLibrary.Program //@remove
     { //@remove
-
+        public Color mainColor = new Color(0, 255, 0);
         public const string SKIP = "[SKIP]";
         public const string StatusTag = "[STATUS]";
         public const string RequestTag = "[REQUEST]";
         public const string infoTag = "[INFO]";
         public const string aimTag = "[AIM]";
 
+        public string ConfSection = "GARM";
+        public string GridTag = "[GRID]";
         public new string LogTag = "[LOG]";
         public const double BATTERY_MAX_LOAD = 0.95;
 

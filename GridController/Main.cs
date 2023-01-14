@@ -326,6 +326,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
             }
 
             saveGridState();
+            lcdDraw();
 
             List<IMyTextPanel> status_displays = new List<IMyTextPanel>();
             List<IMyTextPanel> request_displays = new List<IMyTextPanel>();

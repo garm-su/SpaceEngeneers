@@ -57,6 +57,14 @@ namespace SpaceEngineers.UWBlockPrograms.Grid //@remove
         {
             GridTerminalSystem.GetBlocksOfType<T>(result, item => item.CustomName.Contains(name));
         }
+        public void reScanObjectGroupLocal<T>(List<T> result, String name, Func<T, bool> check) where T : class, IMyTerminalBlock
+        {
+            GridTerminalSystem.GetBlocksOfType<T>(result, item => item.CubeGrid == Me.CubeGrid && item.CustomName.Contains(name) && check(item));
+        }
+        public void reScanObjectGroup<T>(List<T> result, String name, Func<T, bool> check) where T : class, IMyTerminalBlock
+        {
+            GridTerminalSystem.GetBlocksOfType<T>(result, item => item.CustomName.Contains(name) && check(item));
+        }
         public void reScanObjectsLocal<T>(List<T> result, Func<T, bool> check) where T : class, IMyTerminalBlock
         {
             GridTerminalSystem.GetBlocksOfType<T>(result, item => item.CubeGrid == Me.CubeGrid && check(item));
