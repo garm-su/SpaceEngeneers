@@ -32,8 +32,8 @@ namespace SpaceEngineers.UWBlockPrograms.Grid //@remove
             ini.GetKeys(group, keys);
 
             foreach (var key in keys)
-            {
-                minResourses[key.ToString()] = Convert.ToInt32(ini.Get(key));
+            {                
+                minResourses[key.Name] = ini.Get(key).ToInt32();
             }
         }
 

@@ -118,10 +118,12 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusActions //@remove
 
         private bool moveResources(List<IMyCargoContainer> outerCargo, IMyTerminalBlock block, Dictionary<string, int> dictionary)
         {
-            logger.write("Move to " + dictionary.Keys.Count() + " " + outerCargo.Count() + " " + block.CustomName);
+            logger.write("Move to " + dictionary.Keys.Count() + " outer:" + outerCargo.Count() + " " + block.CustomName);
             if (!block.HasInventory || dictionary.Count == 0) return true;
             IMyInventory sourse, destination = block.GetInventory();
             if (destination.IsFull) return true;
+            logger.write(String.Join(", ", dictionary.Keys));
+
 
             for (int i = 0; i < outerCargo.Count; i++)
             {
@@ -137,6 +139,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusActions //@remove
                     {
                         var item = items[k];
                         var resourceName = getName(item.Type);
+                        Echo(resourceName + " " + dictionary.ContainsKey(resourceName));
                         if (dictionary.ContainsKey(resourceName) && dictionary[resourceName] > 0)
                         {
                             var countToMove = Math.Min(dictionary[resourceName], (int)item.Amount);
@@ -257,13 +260,18 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusActions //@remove
             if (irs.Count != 1) return;
             var rc = irs[0];
 
-            var distance = (Me.CubeGrid.GridIntegerToWorld(Me.Position) - rc.CurrentWaypoint.Coords).Length();
-            if (distance < 90)
-            {
-                rc.SpeedLimit = (float)(maxSpeed * (distance + 10) / 100);
-            }
-        }
+            var startDistance = 100;
+            var minPercent = 0.3;
+            double coefficient = 1.0;
 
+            var distance = (Me.CubeGrid.GridIntegerToWorld(Me.Position) - rc.CurrentWaypoint.Coords).Length();
+            if (distance < startDistance)
+            {
+                coefficient = distance * (1 - minPercent) / startDistance + minPercent;
+            }
+
+            rc.SpeedLimit = (float)coefficient * maxSpeed;
+        }
 
     }  //@remove
 }  //@remove

@@ -83,9 +83,9 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
             return "Damaged blocks:\n" + string.Join("\n", gridDamagedBlocks) + "\n";
         }
 
-        public string lcdShowLine(int strsize)
+        public string lcdShowLine(char delimiter, int strsize)
         {
-            string result = new string('-', strsize);
+            string result = new string(delimiter, strsize);
             result += "\n";
             return result;
         }
@@ -100,8 +100,6 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
             reScanObjectGroupLocal(info_displays, infoTag);
             // reScanObjectGroupLocal(displays, GridTag, display => !MyIni.HasSection(display.CustomData, ConfSection));
 
-            logger.write("draw " + info_displays.Count);
-
             var items = gridInventory;
             // string statusMessage = getStatus(); todo move to main here use only value
             // status_displays.ForEach(display => display.WriteText(statusMessage));
@@ -111,7 +109,6 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
             {
                 var result = "";
                 var letters = (int)(display.SurfaceSize.X * (100.0 - 2.0 * display.TextPadding) / 100.0 / display.MeasureStringInPixels(new StringBuilder("X"), display.Font, display.FontSize).X);
-                logger.write("screen " + display.FontSize + " letters:" + letters);
 
                 foreach (var command in display.CustomData.Split('\n'))
                 {
@@ -151,14 +148,11 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
                             break;                                                        
                         case "Parts":
                             //result += lcdInventorySpecificInfo(letters, "parts");
-                            break;                                                        
-						case "-":
-                            result += lcdShowLine(letters);
                             break;
                         default:
                             if (command.Length == 1)
                             {
-                                result += new String(command[0], letters) + "\n";
+                                result += lcdShowLine(command[0], letters);
                             }
                             else
                             {
