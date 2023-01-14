@@ -29,11 +29,11 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusConfig //@remove
         public const string SKIP = "[SKIP]";
         public const string StatusTag = "[STATUS]";
         public const string RequestTag = "[REQUEST]";
-        public const string infoTag = "[INFO]";
-        public const string aimTag = "[AIM]";
+        public const string InfoTag = "[INFO]";
+        public const string AimTag = "[AIM]";
 
         public string ConfSection = "GARM";
-        public string GridTag = "[GRID]";
+        public string GridTag = "[GRID]"; //зачем? есть тэг [INFO]
         public new string LogTag = "[LOG]";
         public const double BATTERY_MAX_LOAD = 0.95;
 

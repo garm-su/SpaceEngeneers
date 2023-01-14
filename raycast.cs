@@ -69,10 +69,10 @@ void Main(string arg)
 	List<IMySensorBlock> aimSensors = new List<IMySensorBlock>(); //sensors
 	List<IMyTextPanel> aimDisplays = new List<IMyTextPanel>(); //aim lcds
 	List<IMyTextPanel> aimModeDisplays = new List<IMyTextPanel>(); //aiming modes info lcds
-	reScanObjectGroupLocal(aimCams, aimTag);
-	reScanObjectGroupLocal(aimSensors, aimTag);
-	reScanObjectGroupLocal(aimDisplays, aimTag);
-	reScanObjectGroupLocal(aimModeDisplays, infoTag);
+	reScanObjectGroupLocal(aimCams, AimTag);
+	reScanObjectGroupLocal(aimSensors, AimTag);
+	reScanObjectGroupLocal(aimDisplays, AimTag);
+	reScanObjectGroupLocal(aimModeDisplays, InfoTag);
 
 //init cameras - todo frontal only
 	foreach(var cam in aimCams)

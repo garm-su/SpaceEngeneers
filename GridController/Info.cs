@@ -34,12 +34,13 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
         public double damagedBlockRatio = 0;
         public double destroyedAmount = 0;
         public List<string> gridDamagedBlocks = new List<string>();
-        List<string> gridDestroyedBlocks = new List<string>();
-        Dictionary<string, int> gridInventory = new Dictionary<string, int>();
+        public List<string> gridDestroyedBlocks = new List<string>();
+        public Dictionary<string, int> gridInventory = new Dictionary<string, int>();
         public List<MyDetectedEntityInfo> targets = new List<MyDetectedEntityInfo>();
 
         public bool gridStateSaved = false;
-
+        public bool lockedState = false;
+		
         public void setAdditionalStatus(String s)
         {
             additionalStatus = s;
@@ -51,7 +52,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
             surface.WriteText(s);
         }
 
-        public Dictionary<string, int> getCurrentInventory()
+        public Dictionary<string, int> getGridInventory()
         {
             List<IMyTerminalBlock> cargo_blocks = new List<IMyTerminalBlock>();
             reScanObjectsLocal<IMyTerminalBlock>(cargo_blocks, b => b.HasInventory);
@@ -104,6 +105,8 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
 
         public void updateGridInfo()
         {
+			saveGridState();
+			checkMaxSpeed();
             gridCharge = getGridBatteryCharge();
             gridGas = getGridGasAmount("Hydrogen");
             gridLoad = getGridUsedCargoSpace();

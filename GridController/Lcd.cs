@@ -30,30 +30,89 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
         private string _lcdFont = "Monospace";
         private float letterWidth = 18;
 
-        public String lcdInventoryInfo(Dictionary<string, int> items, int strsize)
+        public string lcdInventoryInfo(Dictionary<string, int> items, int strsize)
         {
-            String itemsStr = "";
+            string itemsStr = "";
 
             foreach (var i in items)
             {
                 var objectName = i.Key.Split('.').Last();
                 itemsStr += objectName + ":" + number(i.Value, strsize - objectName.Length - 1) + "\n";
-                //test strsize - add logic if itemStr larger than strsize
+                //todo: if (strsize - objectName.Length - 1 < 0)
             }
             return itemsStr;
         }
-
-        public void lcdDraw()
+		
+        public string lcdBatteryCharge(int strsize)
         {
-            var displays = new List<IMyTextPanel>();
+			if (strsize > 12)
+			{
+				int chargeLen = Math.Round((strsize - 12) * gridCharge);
+				string result = new string('█', chargeLen);
+				string spacer = new string(' ', strsize - chargeLen - 12);
+				result = "Battery:" + result + spacer + Math.Round(gridCharge*100).ToString() + "%\n";
+				return result;
+			}
+			else
+			{
+				string result = "Battery:" + result + Math.Round(gridCharge*100).ToString() + "%\n";
+				return result;
+			}
+        }
+
+        public string lcdFuelInfo(int strsize)
+        {
+			if (strsize > 9)
+			{
+				int chargeLen = Math.Round((strsize - 12) * gridCharge);
+				string result = new string('█', chargeLen);
+				string spacer = new string(' ', strsize - chargeLen - 12);
+				result = "Fuel:" + result + spacer + Math.Round(gridGas*100).ToString() + "%\n";
+				return result;
+			}
+			else
+			{
+				string result = "Fuel:" + result + Math.Round(gridGas*100).ToString() + "%\n";
+				return result;
+			}
+        }
+		
+        public string lcdDamageInfo(int strsize)
+        {
+            string result = "Damaged blocks\n";
+			
+			//todo
+			
+			result += "\n";
+            return result;
+        }
+
+        public string lcdShowLine(int strsize)
+        {
+            string result = new string('-', strsize);
+			result += "\n";
+            return result;
+        }		
+
+        public void lcdDraw(string infoTag, string statusTag)
+        {
+            var info_displays = new List<IMyTextPanel>();
             // var ini = new MyIni();
-            reScanObjectGroupLocal(displays, GridTag);
+            var status_displays = new List<IMyTextPanel>();
+			
+			reScanObjectGroupLocal(status_displays, statusTag);
+            reScanObjectGroupLocal(info_displays, infoTag);
             // reScanObjectGroupLocal(displays, GridTag, display => !MyIni.HasSection(display.CustomData, ConfSection));
-            logger.write("draw " + displays.Count);
 
-            var items = getCurrentInventory(); // todo: move out of here;
+            logger.write("draw " + info_displays.Count);
+            
+			var items = gridInventory;
+            string statusMessage = getStatus();
+			
+            status_displays.ForEach(display => display.WriteText(statusMessage));
 
-            foreach (var display in displays)
+
+            foreach (var display in info_displays)
             {
                 var result = "";
                 var letters = (int)(display.SurfaceSize.X * (100.0 - 2.0 * display.TextPadding) / 100.0 / display.MeasureStringInPixels(new StringBuilder("X"), display.Font, display.FontSize).X);
@@ -69,11 +128,26 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
                     switch (command)
                     {
                         case "Battery":
-                            // result += lcdBatteryInfo();
+                            result += lcdBatteryInfo(letters);
                             break;
-                        case "Storage":
+                        case "Fuel":
+                            result += lcdFuelInfo(letters);
+                            break;
+                        case "Damage":
+                            result += lcdDamageInfo(letters);
+                            break;
+                        case "Alerts":
+                            //result += lcdAlerts(letters);
+                            break;
+                        case "Inventory":
                             result += lcdInventoryInfo(items, letters);
                             break;
+                        case "AimInfo":
+                            //result += lcdAimModes(letters);
+                            break;
+						case "-":
+                            result += lcdShowLine(letters);
+                            break;						
                         default:
                             logger.write("lcd: " + display.CustomName + " wrong conf " + command);
                             break;

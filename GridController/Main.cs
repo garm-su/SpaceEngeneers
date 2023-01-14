@@ -1,4 +1,3 @@
-
 using System;
 using System.Linq;
 using System.Text;
@@ -29,8 +28,6 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
       //all terminalblocks
 
         //all armor blocks - be defined
-
-        bool lockedState = false;
 
         ArgParser args;
 
@@ -234,18 +231,12 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
 
         public void Main(string arg)
         {
-            //GridTerminalSystem.GetBlockGroupWithName("");
+//logging and service actions
             logger.write("Main " + arg);
             if (arg.StartsWith(LogTag)) return;
-            // args = new ArgParser(arg);
-            List<IMyTextPanel> infoDisplays = new List<IMyTextPanel>();
-            reScanObjectGroupLocal(infoDisplays, infoTag);
-            /*            foreach (var display in infoDisplays)
-                        {
-                            display.WriteText(showInventory(getGridInventory(), 30));
-                        }*/
 
-            checkMaxSpeed();
+//parse args and execute commands
+            //args = new ArgParser(arg);
 
             if (arg != "")
             {
@@ -325,20 +316,17 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
                 }
             }
 
-            saveGridState();
-            lcdDraw();
 
-            List<IMyTextPanel> status_displays = new List<IMyTextPanel>();
+//rescan and init - remove section after refactor
             List<IMyTextPanel> request_displays = new List<IMyTextPanel>();
-
-
-            reScanObjectGroupLocal(status_displays, StatusTag);
             reScanObjectGroupLocal(request_displays, RequestTag);
             targets.Clear();
-            updateGridInfo();
-            string statusMessage = getStatus();
-            status_displays.ForEach(display => display.WriteText(statusMessage));
 
+//runtime actions
+            updateGridInfo();
+            lcdDraw(InfoTag, StatusTag);
+
+//send
             //statusListener = IGC.RegisterBroadcastListener(statusChannelTag);
             IGC.SendBroadcastMessage(statusChannelTag, statusMessage, TransmissionDistance.CurrentConstruct);
 
