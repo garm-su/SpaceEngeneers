@@ -72,7 +72,8 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
                 List<IMyTerminalBlock> currentState = new List<IMyTerminalBlock>();
                 reScanObjectsLocal(currentState);
                 destroyedAmount = allTBlocks.Count() - currentState.Count();
-                //if block in allBlocks and not in current state add Block.CustomName to result;
+                //todo: if block in allBlocks and not in current state add Block.CustomName to result;
+                //todo: add repair projector with tag [STATUS] as source
             }
             return result;
         }

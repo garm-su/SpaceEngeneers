@@ -79,12 +79,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
 		
         public string lcdDamageInfo(int strsize)
         {
-            string result = "Damaged blocks\n";
-			
-			//todo
-			
-			result += "\n";
-            return result;
+            return "Damaged blocks:\n" + string.Join("\n", gridDamagedBlocks) + "\n";
         }
 
         public string lcdShowLine(int strsize)
@@ -144,6 +139,18 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
                         case "AimInfo":
                             //result += lcdAimModes(letters);
                             break;
+                        case "Ore":
+                            //result += lcdInventorySpecificInfo(letters, "ore");
+                            break;
+                        case "Ingots":
+                            //result += lcdInventorySpecificInfo(letters, "ingots");
+                            break;                                                        
+                        case "Ammo":
+                            //result += lcdInventorySpecificInfo(letters, "ammo");
+                            break;                                                        
+                        case "Parts":
+                            //result += lcdInventorySpecificInfo(letters, "parts");
+                            break;                                                        
 						case "-":
                             result += lcdShowLine(letters);
                             break;						
