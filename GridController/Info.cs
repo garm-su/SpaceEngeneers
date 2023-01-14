@@ -52,32 +52,6 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
             surface.WriteText(s);
         }
 
-        public Dictionary<string, int> getGridInventory()
-        {
-            List<IMyTerminalBlock> cargo_blocks = new List<IMyTerminalBlock>();
-            reScanObjectsLocal<IMyTerminalBlock>(cargo_blocks, b => b.HasInventory);
-            Dictionary<string, int> result = new Dictionary<string, int>();
-            var items = new List<MyInventoryItem>();
-            foreach (var cargo_block in cargo_blocks)
-            {
-                cargo_block.GetInventory(0).GetItems(items);
-                foreach (var item in items)
-                {
-                    var itemName = getName(item.Type);
-                    if (result.ContainsKey(itemName))
-                    {
-                        result[itemName] += (int)item.Amount;
-                    }
-                    else
-                    {
-                        result.Add(itemName, (int)item.Amount);
-                    }
-                }
-            }
-
-            return result;
-        }
-
         public double getGridVelocity()
         {
             double result = 0;
@@ -106,7 +80,6 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
         public void updateGridInfo()
         {
 			saveGridState();
-			checkMaxSpeed();
             gridCharge = getGridBatteryCharge();
             gridGas = getGridGasAmount("Hydrogen");
             gridLoad = getGridUsedCargoSpace();

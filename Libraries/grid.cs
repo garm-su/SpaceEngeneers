@@ -147,6 +147,7 @@ namespace SpaceEngineers.UWBlockPrograms.Grid //@remove
 
             return result;
         }
+
         public List<MyDetectedEntityInfo> getTurretsTargets()
         {
             List<MyDetectedEntityInfo> result = new List<MyDetectedEntityInfo>();

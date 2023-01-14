@@ -324,11 +324,12 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
 
 //runtime actions
             updateGridInfo();
+            checkMaxSpeed();
             lcdDraw(InfoTag, StatusTag);
 
 //send
             //statusListener = IGC.RegisterBroadcastListener(statusChannelTag);
-            IGC.SendBroadcastMessage(statusChannelTag, statusMessage, TransmissionDistance.CurrentConstruct);
+            IGC.SendBroadcastMessage(statusChannelTag, getStatus(), TransmissionDistance.CurrentConstruct);
 
             commandListener = IGC.RegisterBroadcastListener(commandChannelTag);
             while (commandListener.HasPendingMessage)

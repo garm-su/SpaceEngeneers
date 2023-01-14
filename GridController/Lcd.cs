@@ -47,7 +47,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
         {
 			if (strsize > 12)
 			{
-				int chargeLen = Math.Round((strsize - 12) * gridCharge);
+				int chargeLen = (int)((strsize - 12) * gridCharge);
 				string result = new string('█', chargeLen);
 				string spacer = new string(' ', strsize - chargeLen - 12);
 				result = "Battery:" + result + spacer + Math.Round(gridCharge*100).ToString() + "%\n";
@@ -55,7 +55,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
 			}
 			else
 			{
-				string result = "Battery:" + result + Math.Round(gridCharge*100).ToString() + "%\n";
+				string result = "Battery:" + Math.Round(gridCharge*100).ToString() + "%\n";
 				return result;
 			}
         }
@@ -64,7 +64,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
         {
 			if (strsize > 9)
 			{
-				int chargeLen = Math.Round((strsize - 12) * gridCharge);
+				int chargeLen = (int)((strsize - 12) * gridCharge);
 				string result = new string('█', chargeLen);
 				string spacer = new string(' ', strsize - chargeLen - 12);
 				result = "Fuel:" + result + spacer + Math.Round(gridGas*100).ToString() + "%\n";
@@ -72,7 +72,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
 			}
 			else
 			{
-				string result = "Fuel:" + result + Math.Round(gridGas*100).ToString() + "%\n";
+				string result = "Fuel:" + Math.Round(gridGas*100).ToString() + "%\n";
 				return result;
 			}
         }
@@ -107,9 +107,8 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
             logger.write("draw " + info_displays.Count);
             
 			var items = gridInventory;
-            string statusMessage = getStatus();
-			
-            status_displays.ForEach(display => display.WriteText(statusMessage));
+            // string statusMessage = getStatus(); todo move to main here use only value
+            // status_displays.ForEach(display => display.WriteText(statusMessage));
 
 
             foreach (var display in info_displays)
@@ -128,7 +127,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
                     switch (command)
                     {
                         case "Battery":
-                            result += lcdBatteryInfo(letters);
+                            result += lcdBatteryCharge(letters);
                             break;
                         case "Fuel":
                             result += lcdFuelInfo(letters);
