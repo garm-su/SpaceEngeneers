@@ -17,6 +17,7 @@ using SpaceEngineers.Game.ModAPI.Ingame;
 using VRage.Game.ObjectBuilders.Definitions;
 using VRage.Game.GUI.TextPanel;
 using SpaceEngineers.UWBlockPrograms.Grid;
+using VRage.Game.ModAPI.Ingame.Utilities;
 
 // Change this namespace for each script you create.
 namespace SpaceEngineers.UWBlockPrograms.GridStatusActions //@remove
@@ -26,11 +27,38 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusActions //@remove
 
         int maxSpeed = 0;
 
-        public void cargoLoad(string group, String after)
+        public void cargoUnLoad()
         {
-            logger.write("cargoLoad: " + group);
             var blocks = new List<IMyTerminalBlock>();
             reScanObjectsLocal(blocks, b => b.HasInventory);
+            var outerCargo = new List<IMyCargoContainer>();
+            reScanObjects(outerCargo, b => b.CubeGrid != Me.CubeGrid);
+            logger.write("cargoUnLoad " + blocks.Count + " " + outerCargo.Count);
+            foreach (var block in blocks)
+            {
+                var source = block.GetInventory();
+                var items = new List<MyInventoryItem>();
+                source.GetItems(items);
+                for (int k = 0; k < items.Count; k++)
+                {
+                    var item = items[k];
+                    foreach (var outer in outerCargo)
+                    {
+                        var destination = outer.GetInventory();
+                        if (!source.IsConnectedTo(destination) || destination.IsFull) continue;
+                        source.TransferItemTo(destination, k, null, true);
+                    }
+                }
+            }
+
+        }
+
+        public void cargoLoad(string group, String after)
+        {
+            group = group == "" ? "Cargo" : "Cargo-" + group;
+            logger.write("cargoLoad: " + group);
+            var blocks = new List<IMyTerminalBlock>();
+            reScanObjectsLocal(blocks, b => b.HasInventory && MyIni.HasSection(b.CustomData, group));
             var needResources = new Dictionary<string, int>();
 
             var outerCargo = new List<IMyCargoContainer>();
@@ -46,7 +74,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusActions //@remove
 
             foreach (var block in blocks)
             {
-                reReadConfig(needResources, block.CustomData);
+                reReadConfig(needResources, block.CustomData, group);
                 var needResCount = needResources.Values.Sum();
                 if (needResCount == 0) continue;
                 need += needResCount;
@@ -123,24 +151,35 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusActions //@remove
 
         public void cargoSave(string group)
         {
+            group = group == "" ? "Cargo" : "Cargo-" + group;
             logger.write("cargoSave: " + group);
             var blocks = new List<IMyTerminalBlock>();
             reScanObjectsLocal(blocks, b => b.HasInventory);
-            var info = new List<String>();
 
             foreach (var block in blocks)
             {
-                info.Clear();
+                var ini = new MyIni();
+                if (!ini.TryParse(block.CustomData))
+                {
+                    ini.Clear();
+                }
+                else
+                {
+                    ini.DeleteSection(group);
+                }
+
+                ini.AddSection(group);
+
                 var items = new List<MyInventoryItem>();
                 for (int j = 0; j < block.InventoryCount; j++)
                 {
                     block.GetInventory(j).GetItems(items);
                     foreach (var item in items)
                     {
-                        info.Add(getName(item.Type) + ": " + item.Amount.ToString());
+                        ini.Set(group, getName(item.Type), item.Amount.ToString());
                     }
                 }
-                block.CustomData = String.Join("\n", info);
+                block.CustomData = ini.ToString();
             }
         }
 

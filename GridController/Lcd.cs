@@ -32,6 +32,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
 
         public string lcdInventoryInfo(Dictionary<string, int> items, int strsize)
         {
+            if (items.Count == 0) return "[Empty]";
             string itemsStr = "";
 
             foreach (var i in items)
@@ -42,41 +43,41 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
             }
             return itemsStr;
         }
-		
+
         public string lcdBatteryCharge(int strsize)
         {
-			if (strsize > 12)
-			{
-				int chargeLen = (int)((strsize - 12) * gridCharge);
-				string result = new string('█', chargeLen);
-				string spacer = new string(' ', strsize - chargeLen - 12);
-				result = "Battery:" + result + spacer + Math.Round(gridCharge*100).ToString() + "%\n";
-				return result;
-			}
-			else
-			{
-				string result = "Battery:" + Math.Round(gridCharge*100).ToString() + "%\n";
-				return result;
-			}
+            if (strsize > 12)
+            {
+                int chargeLen = (int)((strsize - 12) * gridCharge);
+                string result = new string('█', chargeLen);
+                string spacer = new string(' ', strsize - chargeLen - 12);
+                result = "Battery:" + result + spacer + Math.Round(gridCharge * 100).ToString() + "%\n";
+                return result;
+            }
+            else
+            {
+                string result = "Battery:" + Math.Round(gridCharge * 100).ToString() + "%\n";
+                return result;
+            }
         }
 
         public string lcdFuelInfo(int strsize)
         {
-			if (strsize > 9)
-			{
-				int chargeLen = (int)((strsize - 9) * gridCharge);
-				string result = new string('█', chargeLen);
-				string spacer = new string(' ', strsize - chargeLen - 9);
-				result = "Fuel:" + result + spacer + Math.Round(gridGas*100).ToString() + "%\n";
-				return result;
-			}
-			else
-			{
-				string result = "Fuel:" + Math.Round(gridGas*100).ToString() + "%\n";
-				return result;
-			}
+            if (strsize > 9)
+            {
+                int chargeLen = (int)((strsize - 12) * gridCharge);
+                string result = new string('█', chargeLen);
+                string spacer = new string(' ', strsize - chargeLen - 12);
+                result = "Fuel:" + result + spacer + Math.Round(gridGas * 100).ToString() + "%\n";
+                return result;
+            }
+            else
+            {
+                string result = "Fuel:" + Math.Round(gridGas * 100).ToString() + "%\n";
+                return result;
+            }
         }
-		
+
         public string lcdDamageInfo(int strsize)
         {
             return "Damaged blocks:\n" + string.Join("\n", gridDamagedBlocks) + "\n";
@@ -85,23 +86,23 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
         public string lcdShowLine(int strsize)
         {
             string result = new string('-', strsize);
-			result += "\n";
+            result += "\n";
             return result;
-        }		
+        }
 
         public void lcdDraw(string infoTag, string statusTag)
         {
             var info_displays = new List<IMyTextPanel>();
             // var ini = new MyIni();
             var status_displays = new List<IMyTextPanel>();
-			
-			reScanObjectGroupLocal(status_displays, statusTag);
+
+            reScanObjectGroupLocal(status_displays, statusTag);
             reScanObjectGroupLocal(info_displays, infoTag);
             // reScanObjectGroupLocal(displays, GridTag, display => !MyIni.HasSection(display.CustomData, ConfSection));
 
             logger.write("draw " + info_displays.Count);
-            
-			var items = gridInventory;
+
+            var items = gridInventory;
             // string statusMessage = getStatus(); todo move to main here use only value
             // status_displays.ForEach(display => display.WriteText(statusMessage));
 
@@ -110,7 +111,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
             {
                 var result = "";
                 var letters = (int)(display.SurfaceSize.X * (100.0 - 2.0 * display.TextPadding) / 100.0 / display.MeasureStringInPixels(new StringBuilder("X"), display.Font, display.FontSize).X);
-                logger.write("screen " + display.FontSize + " letters:" + letters );
+                logger.write("screen " + display.FontSize + " letters:" + letters);
 
                 foreach (var command in display.CustomData.Split('\n'))
                 {
@@ -153,9 +154,16 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
                             break;                                                        
 						case "-":
                             result += lcdShowLine(letters);
-                            break;						
+                            break;
                         default:
-                            logger.write("lcd: " + display.CustomName + " wrong conf " + command);
+                            if (command.Length == 1)
+                            {
+                                result += new String(command[0], letters) + "\n";
+                            }
+                            else
+                            {
+                                logger.write("lcd: " + display.CustomName + " wrong conf " + command);
+                            }
                             break;
                     }
                 }

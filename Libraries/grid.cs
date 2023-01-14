@@ -22,22 +22,18 @@ namespace SpaceEngineers.UWBlockPrograms.Grid //@remove
 { //@remove
     public class Program : Helpers.Program //@remove
     { //@remove
-        public void reReadConfig(Dictionary<string, int> minResourses, String CustomData)
+        public void reReadConfig(Dictionary<string, int> minResourses, String CustomData, String group)
         {
-            minResourses.Clear();
+            var ini = new MyIni();
+            ini.TryParse(CustomData);
 
-            foreach (String row in CustomData.Split('\n'))
+            minResourses.Clear();
+            var keys = new List<MyIniKey>();
+            ini.GetKeys(group, keys);
+
+            foreach (var key in keys)
             {
-                if (row.Contains(":"))
-                {
-                    var tup = row.Split(':');
-                    if (tup.Length != 2)
-                    {
-                        Echo("Err: " + row);
-                        continue;
-                    }
-                    minResourses[tup[0].Trim()] = Convert.ToInt32(tup[1].Trim());
-                }
+                minResourses[key.ToString()] = Convert.ToInt32(ini.Get(key));
             }
         }
 

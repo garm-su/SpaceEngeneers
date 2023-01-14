@@ -290,6 +290,9 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
                     case "cargoLoad":
                         cargoLoad(props[1], props[2]);
                         break;
+                    case "cargoUnLoad":
+                        cargoUnLoad();
+                        break;
                     case "maxSpeed":
                         setMaxSpeed(props[1]);
                         break;
