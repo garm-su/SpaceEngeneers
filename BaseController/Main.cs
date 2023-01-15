@@ -39,7 +39,9 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
 
             cargoTag = "[CARGO]",
             alarmTag = "[ALARM]",
-            infoTag = "[INFO]";
+            infoTag = "[INFO BASE]";
+
+        Log logger;
 
         const double
             warningVolume = 85,
@@ -47,6 +49,10 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
             warningCount = 50,
             alarmCount = 25;
         //MyObjectBuilder_Component / MyObjectBuilder_PhysicalObject / MyObjectBuilder_PhysicalGunObject / MyObjectBuilder_ConsumableItem / MyObjectBuilder_AmmoMagazine / MyObjectBuilder_Datapad / MyObjectBuilder_Ingot
+
+        int minBatteryCharge = 80;
+        int maxBatteryCharge = 90;
+        bool h2generatorStarted = false;
 
         const String
         GUN = "MyObjectBuilder_PhysicalGunObject",
@@ -71,7 +77,7 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
         Dictionary<string, int> minResources = new Dictionary<string, int> { };
         Dictionary<string, int> queueResources = new Dictionary<string, int> { };
 
-        long countClear = 0;        
+        long countClear = 0;
 
         Messaging Alarms = new Messaging();
 
@@ -95,7 +101,9 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
         public Program()
         {
             Runtime.UpdateFrequency = UpdateFrequency.Update10;
+            logger = new Log(this);
 
+            h2generatorEnable(false);
             foreach (var fc in factories) fc.connect(this);
         }
 
@@ -267,6 +275,7 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
                             if (skip_move) continue;
                             if (item.Type.TypeId == ORE && block is IMyRefinery) continue;
                             if (item.Type.TypeId == ORE && block is IMyGasGenerator) continue;
+                            if (item.Type.TypeId == ORE && block is IMyGasGenerator) continue;
                             if (item.Type.TypeId == INGOT && block is IMyAssembler) continue;
                             if (item.Type.TypeId == AMMO && block is IMyLargeTurretBase) continue;
                             if (item.Type.TypeId == AMMO && block is IMyUserControllableGun) continue;
@@ -278,9 +287,10 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
                                     destination = cargo.GetInventory();
                                     if (!destination.IsFull && sourse.IsConnectedTo(destination))
                                     {
-                                        sourse.TransferItemTo(destination, k, null, true);
+
+                                        logger.write("> " + getName(item.Type) + " " + block.CustomName + ">" + cargo.CustomName);
                                         moved++;
-                                        break;
+                                        if (sourse.TransferItemTo(destination, k, null, true)) break;
                                     }
                                 }
                             }
@@ -291,9 +301,10 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
                                     destination = cargo.GetInventory();
                                     if (!destination.IsFull && sourse.IsConnectedTo(destination))
                                     {
-                                        sourse.TransferItemTo(destination, k, null, true);
+
+                                        logger.write("> " + getName(item.Type) + " " + block.CustomName + ">" + cargo.CustomName);
                                         moved++;
-                                        break;
+                                        if (sourse.TransferItemTo(destination, k, null, true)) break;
                                     }
                                 }
                             }
@@ -304,9 +315,10 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
                                     destination = cargo.GetInventory();
                                     if (!destination.IsFull && sourse.IsConnectedTo(destination))
                                     {
-                                        sourse.TransferItemTo(destination, k, null, true);
+
+                                        logger.write("> " + getName(item.Type) + " " + block.CustomName + ">" + cargo.CustomName);
                                         moved++;
-                                        break;
+                                        if (sourse.TransferItemTo(destination, k, null, true)) break;
                                     }
                                 }
                             }
@@ -318,9 +330,10 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
                                     destination = cargo.GetInventory();
                                     if (!destination.IsFull && sourse.IsConnectedTo(destination))
                                     {
-                                        sourse.TransferItemTo(destination, k, null, true);
+                                        var transfered = sourse.TransferItemTo(destination, k, null, true);
+                                        logger.write("> " + getName(item.Type) + " " + block.CustomName + ">" + cargo.CustomName + " = " + transfered);
                                         moved++;
-                                        break;
+                                        if (transfered) break;
                                     }
                                 }
                             }
@@ -545,9 +558,37 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
             );
         }
 
+        public void h2generatorEnable(bool newEnable)
+        {
+            var h2gens = new List<IMyPowerProducer>();
+            reScanObjects(h2gens, item => item.BlockDefinition.TypeId.ToString().Contains("Hydrogen"));
+            h2gens.ForEach(gen => gen.Enabled = newEnable);
+            h2generatorStarted = newEnable;
+        }
+
+        public void checkRunGenerators()
+        {
+            var batteryParcent = getGridBatteryCharge();
+            if (!h2generatorStarted && batteryParcent < minBatteryCharge)
+            {
+                h2generatorEnable(true);
+            }
+            if (h2generatorStarted && batteryParcent > maxBatteryCharge)
+            {
+                h2generatorEnable(false);
+            }
+        }
+
+
         public void Main(string argument, UpdateType updateSource)
         {
             Alarms.next();
+
+            checkRunGenerators();
+            if (h2generatorStarted)
+            {
+                Alarms.warn("H2 Engines is ON");
+            }
 
             reScanAssemblers();
             reScanObjectGroup(userCargos, UserTag); //todo move to one loop

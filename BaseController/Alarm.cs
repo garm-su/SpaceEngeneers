@@ -91,6 +91,8 @@ public class Messaging
 
     public string getError()
     {
-        return animFrames[runningFrame / runningMult] + "\n" + String.Join("\n", (alarmMess.messages.Count() > 0 ? alarmMess : warningMess).messages);
+        var isAlarms = alarmMess.messages.Count() > 0;
+        var prefix = (isAlarms ? "Alrm" : "Warn") + ": ";
+        return animFrames[runningFrame / runningMult] + "\n" + prefix + String.Join("\n" + prefix, (isAlarms ? alarmMess : warningMess).messages);
     }
 }
