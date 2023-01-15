@@ -97,21 +97,16 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
 
         //---------------------------- grid status info ----------------------------------
 
-
-
         public bool isAttacked()
         {
             bool isTargets = (targets.Count() > 0);
             bool isLocked = lockedState;
             bool isLargeDamage = false;
-            //isLargeDamage = (damagedBlockRatio > damageTreshold);
+            //isLargeDamage = (damagedBlockRatio > damageTreshold);          
             bool isDestroyedBlocks = (destroyedAmount > 0);
             return (isTargets || isLocked || isLargeDamage || isDestroyedBlocks);
         }
 
-        /*        public bool damaged(out JsonList result)
-                {
-                }*/
 
         public bool isLowAmmo()
         {
@@ -123,6 +118,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
 
         public bool isLowFuel(out string ftype)
         {
+            //todo: implement Json serialize
             bool result = false;
             ftype = "";
             List<string> ftypes = new List<string>();
@@ -131,13 +127,13 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
                 result = true;
                 ftypes.Add("\"energy\"");
             }
-            //todo: check gas if hydrogen thrusters or engines in grid
-            if (gridGas < gasTreshold)
+
+            if ((gridGas < gasTreshold) && (hasGasFueledBlocks))
             {
                 result = true;
                 ftypes.Add("\"gas\"");
             }
-            //todo check uranium (if reactors)
+            //todo check uranium (if reactors == true)
 
             if (ftypes.Count > 0)
             {

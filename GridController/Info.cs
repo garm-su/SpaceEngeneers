@@ -40,6 +40,8 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
 
         public bool gridStateSaved = false;
         public bool lockedState = false;
+        public bool hasGasFueledBlocks = false;
+        public bool hasReactors = false;
 		
         public void setAdditionalStatus(String s)
         {
@@ -101,6 +103,17 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
         {
             if (gridStateSaved && !update) return;
             reScanObjectsLocal(allTBlocks);
+
+            List<IMyPowerProducer> gasEngines = new List<IMyPowerProducer>();
+            List<IMyThrust> gasThrusters = new List<IMyThrust>();
+            List<IMyReactor> reactors = new List<IMyReactor>();
+            reScanObjectsLocal(gasEngines, item => item.BlockDefinition.SubtypeId.Contains("Hydrogen"));
+            reScanObjectsLocal(gasThrusters, item => item.BlockDefinition.SubtypeId.Contains("Hydrogen"));
+            reScanObjectsLocal(reactors);
+
+            hasGasFueledBlocks = (gasEngines.Count() > 0) || (gasThrusters.Count() > 0);
+            hasReactors = reactors.Count() > 0;
+
             //todo save armor block state
             gridStateSaved = true;
         }
