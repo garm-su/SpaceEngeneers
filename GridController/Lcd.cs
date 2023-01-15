@@ -65,9 +65,9 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
         {
             if (strsize > 9)
             {
-                int chargeLen = (int)((strsize - 12) * gridCharge);
+                int chargeLen = (int)((strsize - 9) * gridCharge);
                 string result = new string('█', chargeLen);
-                string spacer = new string(' ', strsize - chargeLen - 12);
+                string spacer = new string(' ', strsize - chargeLen - 9);
                 result = "Fuel:" + result + spacer + Math.Round(gridGas * 100).ToString() + "%\n";
                 return result;
             }
