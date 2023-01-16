@@ -54,6 +54,9 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
         int maxBatteryCharge = 90;
         bool h2generatorStarted = false;
 
+        const String ICE = "Ice";
+        bool iceAlarm = false;
+
         const String
         GUN = "MyObjectBuilder_PhysicalGunObject",
         CONSUMABLE = "MyObjectBuilder_ConsumableItem",
@@ -405,7 +408,18 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
                         if (percent < warningCount)
                         {
                             var err = "Too few " + entry.Key + " ( " + number(count) + " )";
-                            if (percent < alarmCount) { Alarms.alarm(err); } else { Alarms.warn(err); }
+                            if (percent < alarmCount)
+                            {
+                                Alarms.alarm(err);
+                                if (entry.Key == ICE)
+                                {
+                                    iceAlarm = true;
+                                }
+                            }
+                            else
+                            {
+                                Alarms.warn(err);
+                            }
                         }
                     }
                 }
@@ -569,13 +583,14 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
         public void checkRunGenerators()
         {
             var batteryParcent = getGridBatteryCharge();
-            if (!h2generatorStarted && batteryParcent < minBatteryCharge)
-            {
-                h2generatorEnable(true);
-            }
-            if (h2generatorStarted && batteryParcent > maxBatteryCharge)
+
+            if (h2generatorStarted && (iceAlarm || batteryParcent > maxBatteryCharge))
             {
                 h2generatorEnable(false);
+            }
+            else if (!iceAlarm && !h2generatorStarted && batteryParcent < minBatteryCharge)
+            {
+                h2generatorEnable(true);
             }
         }
 
@@ -583,11 +598,15 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
         public void Main(string argument, UpdateType updateSource)
         {
             Alarms.next();
+            iceAlarm = false;
 
-            checkRunGenerators();
             if (h2generatorStarted)
             {
                 Alarms.warn("H2 Engines is ON");
+            }
+            else
+            {
+
             }
 
             reScanAssemblers();
@@ -626,6 +645,7 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
             alarmNoObject(foundObjects, minResources);
             alarmNoObject(foundObjects, minComponents);
 
+            checkRunGenerators();
             foreach (var fc in factories) fc.check();
 
             calculateVolume();
@@ -658,6 +678,10 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
                 if (!foundObjects.Contains(objName))
                 {
                     Alarms.alarm("There is no " + objName);
+                    if (objName == ICE)
+                    {
+                        iceAlarm = true;
+                    }
                 }
             }
         }
