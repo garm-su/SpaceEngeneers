@@ -1,0 +1,22 @@
+//Connect connector, if success then start TB
+connect,#connector#,#tb#
+
+//Check battery, if charged then start TB
+Battery,TB Handle Start Таскалище 02
+//Set battery to Reachage
+batteryCharge,Recharge
+//Set battery to Auto
+batteryCharge,Auto
+
+//Unload inventory
+cargoUnLoad
+//Load inventory template, if all full or loaded then start TB
+cargoLoad,#CargoTemplate#,#TB#
+//Save inventory template
+cargoSave,#CargoTemplate#
+
+//Set max speed
+maxSpeed,50
+
+//saveCurrentConfig
+saveConfig

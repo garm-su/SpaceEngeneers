@@ -20,9 +20,9 @@ using VRage.Game.GUI.TextPanel;
 // Change this namespace for each script you create.
 namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
 { //@remove
-    public class Program : GridStatusConfig.Program //@remove
+    public class Program : GridStatusVersion.Program //@remove
     { //@remove
-
+        public const String Ver = "1.0";
         public List<IMyTerminalBlock> allTBlocks = new List<IMyTerminalBlock>();
 
         public string additionalStatus = "";

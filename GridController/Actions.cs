@@ -25,7 +25,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusActions //@remove
     public class Program : GridStatusRadar.Program //@remove
     { //@remove
 
-        int maxSpeed = 0;
+        int maxSpeed = 100;
 
         public void cargoUnLoad()
         {
@@ -259,15 +259,12 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusActions //@remove
             reScanObjectsLocal(irs, ir => ir.IsAutoPilotEnabled);
             if (irs.Count != 1) return;
             var rc = irs[0];
-
-            var startDistance = 100;
-            var minPercent = 0.3;
-            double coefficient = 1.0;
+            var coefficient = 1.0;
 
             var distance = (Me.CubeGrid.GridIntegerToWorld(Me.Position) - rc.CurrentWaypoint.Coords).Length();
-            if (distance < startDistance)
+            if (distance < decelerationDistance)
             {
-                coefficient = distance * (1 - minPercent) / startDistance + minPercent;
+                coefficient = distance * (1 - minPercentSpeed) / decelerationDistance + minPercentSpeed;
             }
 
             rc.SpeedLimit = (float)coefficient * maxSpeed;

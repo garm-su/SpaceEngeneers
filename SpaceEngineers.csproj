@@ -97,6 +97,7 @@
     <Compile Include="GridController/Info.cs" />
     <Compile Include="GridController/Radar.cs" />
     <Compile Include="GridController/Config.cs" />
+    <Compile Include="GridController/Version.cs" />
     
     <Compile Include="Json/Main.cs" />
     

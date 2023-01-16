@@ -221,6 +221,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
         public Program()
         {
             // Set the script to run every 100 ticks, so no timer needed.
+            loadConfig();
             logger = new Log(this);
             Runtime.UpdateFrequency = UpdateFrequency.Update100;
         }
@@ -236,42 +237,6 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
 
             if (arg != "")
             {
-                //change parameters
-                // .ToList<String>()
-                //todo myInit CustomData
-
-                if (arg.Contains("=")) //todo: remove
-                {
-                    List<string> args = arg.Split('=').Select(a => a.Trim()).ToList();
-                    string cmd = args[0];
-                    string val = args[1];
-
-                    switch (cmd)
-                    {
-                        case "ammo":
-                            //todo: set ammo request
-                            break;
-                        case "items":
-                            //todo: set items request
-                            break;
-                        case "energy":
-                            energyTreshold = Int32.Parse(val);
-                            break;
-                        case "gas":
-                            gasTreshold = Int32.Parse(val);
-                            break;
-                        case "damage":
-                            damageTreshold = Int32.Parse(val);
-                            break;
-                        case "uranium":
-                            uraniumTreshold = Int32.Parse(val);
-                            break;
-                        default:
-                            Echo("Unknown argument");
-                            break;
-                    }
-                }
-
                 arg += ",,";
                 var props = arg.Split(',');
 
@@ -297,6 +262,12 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
                         break;
                     case "batteryCharge":
                         batteryCharge(props[1]);
+                        break;
+                    case "saveConfig":
+                        saveConfig();
+                        break;
+                    case "loadConfig":
+                        loadConfig();
                         break;
                     case "locked":
                         lockedState = true;
