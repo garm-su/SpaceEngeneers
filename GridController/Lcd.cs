@@ -93,6 +93,64 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
             return result;
         }
 
+        public string lcdInventorySpecificInfo(int strsize, string subtype)
+        {
+            List<string> result = new List<string>();
+            foreach (var i in gridInventory)
+            {
+                var objectType = i.Key.Split('.').First();
+                var objectName = i.Key.Split('.').Last();
+                //todo: if (strsize - objectName.Length - 1 < 0)
+                switch(subtype)
+                {
+                    case "Ore":
+                        if (objectType.Contains("_Ore"))
+                        {
+                            result.Add(objectName + ":" + number(i.Value, strsize - objectName.Length - 1));
+                        }
+                        break;
+                    case "Ingots":
+                        if (objectType.Contains("_Ingot"))
+                        {
+                            result.Add(objectName + " ingots:" + number(i.Value, strsize - objectName.Length - 8));
+                        }
+                        break;
+                    
+                    case "Components":
+                        if (objectType.Contains("_Component"))
+                        {
+                            //todo: map to readable names
+                            result.Add(objectName + ":" + number(i.Value, strsize - objectName.Length - 1));
+                        }
+                        break;
+
+                    case "Ammo":
+                        if (objectType.Contains("_AmmoMagazine"))
+                        {
+                            //todo: map to readable names
+                            result.Add(objectName + ":" + number(i.Value, strsize - objectName.Length - 1));
+                        }
+                        break;
+
+                    case "Equip":
+                        if (objectType.Contains("_PhysicalGunObject")||objectType.Contains("_ConsumableItem")||(objectType.Contains("ContainerObject")))
+                        {
+                            //todo: map to readable names
+                            result.Add(objectName + ":" + number(i.Value, strsize - objectName.Length - 1));
+                        }
+                        break;
+                    default:
+                        break;
+                }
+
+            }
+            if(result.Count() == 0)
+            {
+                result.Add("[EMPTY]");
+            }
+            return string.Join("\n", result) + "\n";
+        }
+
         public void lcdDraw(string infoTag, string statusTag)
         {
             var info_displays = new List<IMyTextPanel>();
@@ -141,16 +199,16 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
                             //result += lcdAimModes(letters);
                             break;
                         case "Ore":
-                            //result += lcdInventorySpecificInfo(letters, "ore");
+                            result += lcdInventorySpecificInfo(letters, "Ore");
                             break;
                         case "Ingots":
-                            //result += lcdInventorySpecificInfo(letters, "ingots");
+                            result += lcdInventorySpecificInfo(letters, "Ingots");
                             break;                                                        
                         case "Ammo":
-                            //result += lcdInventorySpecificInfo(letters, "ammo");
+                            result += lcdInventorySpecificInfo(letters, "Ammo");
                             break;                                                        
-                        case "Parts":
-                            //result += lcdInventorySpecificInfo(letters, "parts");
+                        case "Components":
+                            result += lcdInventorySpecificInfo(letters, "Components");
                             break;
                         default:
                             if (command.Length == 1)
