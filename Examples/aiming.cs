@@ -172,297 +172,290 @@ const float SECOND = 60f;
 
 Program()
 {
-Runtime.UpdateFrequency = UpdateFrequency.Update1;
+    Runtime.UpdateFrequency = UpdateFrequency.Update1;
 }
 
 void Main(string arguments, UpdateType updateSource)
 {
-if (!init)
-{
-if (subMode == 0)
-{
-if (Me.CustomData.Length > 0)
-{
-ProcessCustomConfiguration();
-}
+    if (!init)
+    {
+        if (subMode == 0)
+        {
+            if (Me.CustomData.Length > 0)
+                {
+                ProcessCustomConfiguration();
+                }
+            InitScript(arguments);
+            if (raycastAheadCount > 0 && raycastAheadSeconds == 0f)
+            {
+                raycastAheadSeconds = 0.5f;
+            }
 
-InitScript(arguments);
+            if (checkSelfOcclusion)
+            {
+                occlusionChecker = new CubeTree();
+                iterOcclusionCreator = occlusionChecker.InitTree(Me.CubeGrid, Me.Position, 1000);
 
-if (raycastAheadCount > 0 && raycastAheadSeconds == 0f)
-{
-raycastAheadSeconds = 0.5f;
-}
+                subMode = 1;
+            }
+        }
 
-if (checkSelfOcclusion)
-{
-occlusionChecker = new CubeTree();
-iterOcclusionCreator = occlusionChecker.InitTree(Me.CubeGrid, Me.Position, 1000);
+        if (subMode == 1)
+        {
+            if (iterOcclusionCreator.MoveNext())
+            {
+                Echo("--- Creating Occlusion Checker ---\nBlocks Processed:" + iterOcclusionCreator.Current);
+                return;
+            }
+            else
+            {
+                iterOcclusionCreator.Dispose();
+                iterOcclusionCreator = null;
+            }
+        }
 
-subMode = 1;
-}
-}
+        mode = subMode = subCounter = 0;
+        clock = 0;
 
-if (subMode == 1)
-{
-if (iterOcclusionCreator.MoveNext())
-{
-Echo("--- Creating Occlusion Checker ---\nBlocks Processed:" + iterOcclusionCreator.Current);
-return;
-}
-else
-{
-iterOcclusionCreator.Dispose();
-iterOcclusionCreator = null;
-}
-}
+        prevMode = -1;
 
-mode = subMode = subCounter = 0;
-clock = 0;
+        init = true;
+        return;
+    }
 
-prevMode = -1;
+    if (arguments.Length > 0)
+    {
+        ProcessCommand(arguments);
+    }
 
-init = true;
-return;
-}
+    if ((updateSource & UpdateType.Update1) == 0 || Runtime.TimeSinceLastRun.Ticks == 0)
+    {
+        return;
+    }
 
-if (arguments.Length > 0)
-{
-ProcessCommand(arguments);
-}
+    clock++;
 
-if ((updateSource & UpdateType.Update1) == 0 || Runtime.TimeSinceLastRun.Ticks == 0)
-{
-return;
-}
+    ProcessModeChange();
 
-clock++;
+    bool isUnreachable = true;
 
-ProcessModeChange();
+    if (mode == 1)
+    {
+        if (nextLidarTriggerTicks <= clock)
+        {
+            refWorldMatrix = aimPointBlock.WorldMatrix;
+            Vector3D forwardVector = refWorldMatrix.Forward;
+            Vector3D targetPosition = refWorldMatrix.Translation + (forwardVector * LIDAR_MAX_LOCK_DISTANCE);
 
-bool isUnreachable = true;
+            int lidarCount = raycastAheadCount > 0 ? raycastAheadCount + 1 : (fivePointInitialLockDist > 0 ? 5 : 1);
+            List<IMyCameraBlock> lidars = GetLidarsAndRecountTicks(aimLidars, ref targetPosition, 0, lidarStaggerIndex++, lidarCount, ref refWorldMatrix);
+            if (lidars.Count >= lidarCount)
+            {
+                Vector3D?[] refPoints = SpreadRaycastPoint(ref targetPosition, ref forwardVector, LIDAR_MAX_LOCK_DISTANCE, lidarCount);
+                Vector3D[] refVectors = null;
+                if (lidars.Count > 1)
+                {
+                    refVectors = new Vector3D[] { targetPosition, refWorldMatrix.Up, refWorldMatrix.Left };
+                }
 
-if (mode == 1)
-{
-if (nextLidarTriggerTicks <= clock)
-{
-refWorldMatrix = aimPointBlock.WorldMatrix;
-Vector3D forwardVector = refWorldMatrix.Forward;
-Vector3D targetPosition = refWorldMatrix.Translation + (forwardVector * LIDAR_MAX_LOCK_DISTANCE);
+                for (int i = 0; i < lidars.Count; i++)
+                {
+                    MyDetectedEntityInfo entityInfo = lidars[i].Raycast(refPoints[i].Value);
+                    if (!entityInfo.IsEmpty())
+                    {
+                        double targetDistance = Vector3D.Distance(entityInfo.Position, aimPointBlock.GetPosition());
+                        if (targetDistance > LIDAR_MIN_LOCK_DISTANCE)
+                        {
+                            if (IsValidLidarTarget(ref entityInfo))
+                            {
+                                lidarTargetDistance = targetDistance;
+                                lidarTargetSpeed = entityInfo.Velocity.Length();
+                                lidarTargetRadius = Vector3D.Distance(entityInfo.BoundingBox.Min, entityInfo.BoundingBox.Max);
+                                lidarTargetAcceleration = new Vector3D();
 
-int lidarCount = raycastAheadCount > 0 ? raycastAheadCount + 1 : (fivePointInitialLockDist > 0 ? 5 : 1);
-List<IMyCameraBlock> lidars = GetLidarsAndRecountTicks(aimLidars, ref targetPosition, 0, lidarStaggerIndex++, lidarCount, ref refWorldMatrix);
-if (lidars.Count >= lidarCount)
-{
-Vector3D?[] refPoints = SpreadRaycastPoint(ref targetPosition, ref forwardVector, LIDAR_MAX_LOCK_DISTANCE, lidarCount);
-Vector3D[] refVectors = null;
-if (lidars.Count > 1)
-{
-refVectors = new Vector3D[] { targetPosition, refWorldMatrix.Up, refWorldMatrix.Left };
-}
+                                if (entityInfo.HitPosition != null)
+                                {
+                                    relativeHitPosition = Vector3D.Transform(entityInfo.HitPosition.Value - entityInfo.Position, MatrixD.Invert(entityInfo.Orientation));
+                                }   
+                                else
+                                {
+                                    relativeHitPosition = Vector3D.Zero;
+                                }
 
-for (int i = 0; i < lidars.Count; i++)
-{
-MyDetectedEntityInfo entityInfo = lidars[i].Raycast(refPoints[i].Value);
-if (!entityInfo.IsEmpty())
-{
-double targetDistance = Vector3D.Distance(entityInfo.Position, aimPointBlock.GetPosition());
-if (targetDistance > LIDAR_MIN_LOCK_DISTANCE)
-{
-if (IsValidLidarTarget(ref entityInfo))
-{
-lidarTargetDistance = targetDistance;
-lidarTargetSpeed = entityInfo.Velocity.Length();
-lidarTargetRadius = Vector3D.Distance(entityInfo.BoundingBox.Min, entityInfo.BoundingBox.Max);
-lidarTargetAcceleration = new Vector3D();
+                                lidarTargetInfo = entityInfo;
+                                lastLidarTargetClock = clock;
+                                subCounter = 0;
+                                statusMessage = "";
+                                mode = 2;
+                                ProcessModeChange();
+                                lastTargetFound = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    else if (mode == 2)
+    {
+        refWorldMatrix = aimPointBlock.WorldMatrix;
 
-if (entityInfo.HitPosition != null)
-{
-relativeHitPosition = Vector3D.Transform(entityInfo.HitPosition.Value - entityInfo.Position, MatrixD.Invert(entityInfo.Orientation));
-}   
-else
-{
-relativeHitPosition = Vector3D.Zero;
-}
+        long deltaTicks = clock - lastLidarTargetClock;
+        float deltaTimeR = 1.0f / deltaTicks;
 
-lidarTargetInfo = entityInfo;
-lastLidarTargetClock = clock;
+        Vector3D targetPosition = lidarTargetInfo.Position + (lidarTargetInfo.Velocity * INV_ONE_TICK * deltaTicks);
 
-subCounter = 0;
+        if (useOffsetTargeting)
+        {
+            targetPosition += Vector3D.Transform(relativeHitPosition, lidarTargetInfo.Orientation);
+        }
 
-statusMessage = "";
-mode = 2;
+        if (nextLidarTriggerTicks <= clock)
+        {
+            bool targetFound = false;
 
-ProcessModeChange();
+            double overshootDistance = lidarTargetRadius / 2;
 
-lastTargetFound = true;
+            IMyCameraBlock aimLidar = GetLidarAndRecountTicks(aimLidars, ref targetPosition, overshootDistance, lidarStaggerIndex++, ref refWorldMatrix);
+            if (aimLidar != null)
+            {
+                Vector3D testTargetPosition = targetPosition + (Vector3D.Normalize(targetPosition - aimLidar.GetPosition()) * overshootDistance);
 
-break;
-}
-}
-}
-}
-}
-}
-}
-else if (mode == 2)
-{
-refWorldMatrix = aimPointBlock.WorldMatrix;
+                MyDetectedEntityInfo entityInfo = aimLidar.Raycast(testTargetPosition);
+                if (!entityInfo.IsEmpty())
+                {
+                    if (entityInfo.EntityId == lidarTargetInfo.EntityId)
+                    {
+                        lidarTargetDistance = Vector3D.Distance(entityInfo.Position, aimPointBlock.GetPosition());
+                        lidarTargetSpeed = entityInfo.Velocity.Length();
+                        lidarTargetRadius = Vector3D.Distance(entityInfo.BoundingBox.Min, entityInfo.BoundingBox.Max);
 
-long deltaTicks = clock - lastLidarTargetClock;
-float deltaTimeR = 1.0f / deltaTicks;
+                        Vector3D acceleration = (entityInfo.Velocity - lidarTargetInfo.Velocity) * deltaTimeR * SECOND;
+                        if (acceleration.LengthSquared() > 1)
+                        {
+                            Vector3D prevAcceleration = lidarTargetAcceleration;
+                            lidarTargetAcceleration = (lidarTargetAcceleration * 0.25) + (acceleration * 0.75f);
+                            lidarTargetAccelDotChange = Vector3D.Normalize(lidarTargetAcceleration).Dot(Vector3D.Normalize(prevAcceleration)) * deltaTimeR * SECOND;
+                        }
+                        else
+                        {
+                            lidarTargetAcceleration = Vector3D.Zero;
+                            lidarTargetAccelDotChange = 0;
+                        }
 
-Vector3D targetPosition = lidarTargetInfo.Position + (lidarTargetInfo.Velocity * INV_ONE_TICK * deltaTicks);
+                        lidarTargetInfo = entityInfo;
+                        lastLidarTargetClock = clock;
 
-if (useOffsetTargeting)
-{
-targetPosition += Vector3D.Transform(relativeHitPosition, lidarTargetInfo.Orientation);
-}
+                        targetPosition = entityInfo.Position;
 
-if (nextLidarTriggerTicks <= clock)
-{
-bool targetFound = false;
+                        if (useOffsetTargeting)
+                        {
+                            targetPosition += Vector3D.Transform(relativeHitPosition, lidarTargetInfo.Orientation);
+                        }
 
-double overshootDistance = lidarTargetRadius / 2;
+                        targetFound = true;
+                    }
+                }
+            }
 
-IMyCameraBlock aimLidar = GetLidarAndRecountTicks(aimLidars, ref targetPosition, overshootDistance, lidarStaggerIndex++, ref refWorldMatrix);
-if (aimLidar != null)
-{
-Vector3D testTargetPosition = targetPosition + (Vector3D.Normalize(targetPosition - aimLidar.GetPosition()) * overshootDistance);
+            lastTargetFound = targetFound;
+        }
 
-MyDetectedEntityInfo entityInfo = aimLidar.Raycast(testTargetPosition);
-if (!entityInfo.IsEmpty())
-{
-if (entityInfo.EntityId == lidarTargetInfo.EntityId)
-{
-lidarTargetDistance = Vector3D.Distance(entityInfo.Position, aimPointBlock.GetPosition());
-lidarTargetSpeed = entityInfo.Velocity.Length();
-lidarTargetRadius = Vector3D.Distance(entityInfo.BoundingBox.Min, entityInfo.BoundingBox.Max);
+        if (targetPanel != null)
+        {
+            targetPanel.WritePublicTitle("GPS:Sogeki:" + Math.Round(targetPosition.X, 2) + ":" + Math.Round(targetPosition.Y, 2) + ":" + Math.Round(targetPosition.Z, 2) + ":");
+        }
 
-Vector3D acceleration = (entityInfo.Velocity - lidarTargetInfo.Velocity) * deltaTimeR * SECOND;
-if (acceleration.LengthSquared() > 1)
-{
-Vector3D prevAcceleration = lidarTargetAcceleration;
-lidarTargetAcceleration = (lidarTargetAcceleration * 0.25) + (acceleration * 0.75f);
-lidarTargetAccelDotChange = Vector3D.Normalize(lidarTargetAcceleration).Dot(Vector3D.Normalize(prevAcceleration)) * deltaTimeR * SECOND;
-}
-else
-{
-lidarTargetAcceleration = Vector3D.Zero;
-lidarTargetAccelDotChange = 0;
-}
+        Vector3D aimDirection;
+        double travelDistance;
 
-lidarTargetInfo = entityInfo;
-lastLidarTargetClock = clock;
+        if (subMode == 0)
+        {
+            if (SHOOT_AHEAD_TIME > 0 || SHOOT_AHEAD_DISTANCE > 0)
+            {
+                targetPosition += (new Vector3D(lidarTargetInfo.Velocity) * SHOOT_AHEAD_TIME) + (SHOOT_AHEAD_DISTANCE == 0 ? Vector3D.Zero : Vector3D.Normalize(lidarTargetInfo.Velocity) * SHOOT_AHEAD_DISTANCE);
+            }
 
-targetPosition = entityInfo.Position;
+            switch (weaponType)
+            {
+                case 0:
+                    aimDirection = ComputeInterceptPointWithInheritSpeed(targetPosition, lidarTargetInfo.Velocity, lidarTargetAcceleration, (ROCKET_PROJECTILE_FORWARD_OFFSET == 0 ? refWorldMatrix.Translation : refWorldMatrix.Translation + (refWorldMatrix.Forward * ROCKET_PROJECTILE_FORWARD_OFFSET)), remoteControl.GetShipVelocities().LinearVelocity, ROCKET_PROJECTILE_INITIAL_SPEED, ROCKET_PROJECTILE_ACCELERATION, ROCKET_PROJECTILE_MAX_SPEED, ROCKET_PROJECTILE_MAX_RANGE);
+                    break;
+                default:
+                    aimDirection = ComputeInterceptPoint(targetPosition, lidarTargetInfo.Velocity - remoteControl.GetShipVelocities().LinearVelocity, lidarTargetAcceleration, (GATLING_PROJECTILE_FORWARD_OFFSET == 0 ? refWorldMatrix.Translation : refWorldMatrix.Translation + (refWorldMatrix.Forward * GATLING_PROJECTILE_FORWARD_OFFSET)), GATLING_PROJECTILE_INITIAL_SPEED, GATLING_PROJECTILE_ACCELERATION, GATLING_PROJECTILE_MAX_SPEED);
+                    break;
+            }
+            aimDirection = aimDirection - refWorldMatrix.Translation;
 
-if (useOffsetTargeting)
-{
-targetPosition += Vector3D.Transform(relativeHitPosition, lidarTargetInfo.Orientation);
-}
+            travelDistance = aimDirection.Length();
+        }
+        else
+        {
+            aimDirection = targetPosition - refWorldMatrix.Translation;
+            travelDistance = lidarTargetDistance;
+        }
 
-targetFound = true;
-}
-}
-}
+        if (Double.IsNaN(aimDirection.Sum))
+        {
+            isUnreachable = true;
 
-lastTargetFound = targetFound;
-}
+            aimDirection = targetPosition - refWorldMatrix.Translation;
 
-if (targetPanel != null)
-{
-targetPanel.WritePublicTitle("GPS:Sogeki:" + Math.Round(targetPosition.X, 2) + ":" + Math.Round(targetPosition.Y, 2) + ":" + Math.Round(targetPosition.Z, 2) + ":");
-}
+            subCounter = 0;
+        }
+        else
+        {
+            isUnreachable = false;
 
-Vector3D aimDirection;
-double travelDistance;
+            aimDirection = Vector3D.Normalize(aimDirection);
+            angleToTarget = Math.Acos(Math.Min(refWorldMatrix.Forward.Dot(aimDirection), 1));
 
-if (subMode == 0)
-{
-if (SHOOT_AHEAD_TIME > 0 || SHOOT_AHEAD_DISTANCE > 0)
-{
-targetPosition += (new Vector3D(lidarTargetInfo.Velocity) * SHOOT_AHEAD_TIME) + (SHOOT_AHEAD_DISTANCE == 0 ? Vector3D.Zero : Vector3D.Normalize(lidarTargetInfo.Velocity) * SHOOT_AHEAD_DISTANCE);
-}
+            double maxWeaponRange;
+            switch (weaponType)
+            {
+                case 0:
+                    maxWeaponRange = ROCKET_PROJECTILE_MAX_RANGE;
+                    break;
+                default:
+                    maxWeaponRange = GATLING_PROJECTILE_MAX_RANGE;
+                    break;
+            }
 
-switch (weaponType)
-{
-case 0:
-aimDirection = ComputeInterceptPointWithInheritSpeed(targetPosition, lidarTargetInfo.Velocity, lidarTargetAcceleration, (ROCKET_PROJECTILE_FORWARD_OFFSET == 0 ? refWorldMatrix.Translation : refWorldMatrix.Translation + (refWorldMatrix.Forward * ROCKET_PROJECTILE_FORWARD_OFFSET)), remoteControl.GetShipVelocities().LinearVelocity, ROCKET_PROJECTILE_INITIAL_SPEED, ROCKET_PROJECTILE_ACCELERATION, ROCKET_PROJECTILE_MAX_SPEED, ROCKET_PROJECTILE_MAX_RANGE);
-break;
-default:
-aimDirection = ComputeInterceptPoint(targetPosition, lidarTargetInfo.Velocity - remoteControl.GetShipVelocities().LinearVelocity, lidarTargetAcceleration, (GATLING_PROJECTILE_FORWARD_OFFSET == 0 ? refWorldMatrix.Translation : refWorldMatrix.Translation + (refWorldMatrix.Forward * GATLING_PROJECTILE_FORWARD_OFFSET)), GATLING_PROJECTILE_INITIAL_SPEED, GATLING_PROJECTILE_ACCELERATION, GATLING_PROJECTILE_MAX_SPEED);
-break;
-}
-aimDirection = aimDirection - refWorldMatrix.Translation;
+            if ((angleToTarget * ACOS_FACTOR) <= AIM_STABILIZE_ANGLE && (maxWeaponRange == 0 || travelDistance <= maxWeaponRange))
+            {
+                subCounter += 1;
+            }
+            else
+            {
+                subCounter = 0;
+            }
+        }
 
-travelDistance = aimDirection.Length();
-}
-else
-{
-aimDirection = targetPosition - refWorldMatrix.Translation;
-travelDistance = lidarTargetDistance;
-}
+        refLookAtMatrix = MatrixD.CreateLookAt(Vector3D.Zero, refWorldMatrix.Forward, refWorldMatrix.Up);
+        aimDirection = Vector3D.Normalize(Vector3D.TransformNormal(aimDirection, refLookAtMatrix));
 
-if (Double.IsNaN(aimDirection.Sum))
-{
-isUnreachable = true;
+        AimAtTarget(aimDirection);
 
-aimDirection = targetPosition - refWorldMatrix.Translation;
+        if (!controlledCockpit.IsUnderControl)
+        {
+            for (int i = 0; i < cockpits.Count; i++)
+            {
+                if (cockpits[i].IsUnderControl)
+                {
+                    controlledCockpit = cockpits[i];
+                    break;
+                }
+            }
+        }
+        gyroControl.SetGyroRoll(controlledCockpit.RollIndicator * -30);
 
-subCounter = 0;
-}
-else
-{
-isUnreachable = false;
-
-aimDirection = Vector3D.Normalize(aimDirection);
-angleToTarget = Math.Acos(Math.Min(refWorldMatrix.Forward.Dot(aimDirection), 1));
-
-double maxWeaponRange;
-switch (weaponType)
-{
-case 0:
-maxWeaponRange = ROCKET_PROJECTILE_MAX_RANGE;
-break;
-default:
-maxWeaponRange = GATLING_PROJECTILE_MAX_RANGE;
-break;
-}
-
-if ((angleToTarget * ACOS_FACTOR) <= AIM_STABILIZE_ANGLE && (maxWeaponRange == 0 || travelDistance <= maxWeaponRange))
-{
-subCounter += 1;
-}
-else
-{
-subCounter = 0;
-}
-}
-
-refLookAtMatrix = MatrixD.CreateLookAt(Vector3D.Zero, refWorldMatrix.Forward, refWorldMatrix.Up);
-aimDirection = Vector3D.Normalize(Vector3D.TransformNormal(aimDirection, refLookAtMatrix));
-
-AimAtTarget(aimDirection);
-
-if (!controlledCockpit.IsUnderControl)
-{
-for (int i = 0; i < cockpits.Count; i++)
-{
-if (cockpits[i].IsUnderControl)
-{
-controlledCockpit = cockpits[i];
-break;
-}
-}
-}
-gyroControl.SetGyroRoll(controlledCockpit.RollIndicator * -30);
-
-if (lastLidarTargetClock + LIDAR_LOCK_LOST_TICKS <= clock)
-{
-statusMessage = "Цель потеряна";
-subCounter = 0;
-mode = 0;
-}
+        if (lastLidarTargetClock + LIDAR_LOCK_LOST_TICKS <= clock)
+        {
+            statusMessage = "Цель потеряна";
+            subCounter = 0;
+            mode = 0;
+        }
 }
 
 if (mode == 2)
@@ -1308,413 +1301,413 @@ index++;
 
 public byte SetRelativeDirection(Base6Directions.Direction dir)
 {
-switch (dir)
-{
-case Base6Directions.Direction.Up:
-return 0;
-case Base6Directions.Direction.Down:
-return 1;
-case Base6Directions.Direction.Left:
-return 2;
-case Base6Directions.Direction.Right:
-return 3;
-case Base6Directions.Direction.Forward:
-return 5;
-case Base6Directions.Direction.Backward:
-return 4;
-}
-return 0;
+    switch (dir)
+    {
+        case Base6Directions.Direction.Up:
+            return 0;
+        case Base6Directions.Direction.Down:
+            return 1;
+        case Base6Directions.Direction.Left:
+            return 2;
+        case Base6Directions.Direction.Right:
+            return 3;
+        case Base6Directions.Direction.Forward:
+            return 5;
+        case Base6Directions.Direction.Backward:
+            return 4;
+    }
+    return 0;
 }
 
 public void ApplyAction(string actionName)
 {
-foreach (IMyGyro gyro in gyros)
-{
-gyro.ApplyAction(actionName);
-}
+    foreach (IMyGyro gyro in gyros)
+    {
+        gyro.ApplyAction(actionName);
+    }
 }
 
 public void SetGyroOverride(bool bOverride)
 {
-foreach (IMyGyro gyro in gyros)
-{
-if (gyro.GyroOverride != bOverride)
-{
-gyro.ApplyAction("Override");
-}
-}
+    foreach (IMyGyro gyro in gyros)
+    {
+        if (gyro.GyroOverride != bOverride)
+        {
+            gyro.ApplyAction("Override");
+        }
+    }
 }
 
 public void SetGyroYaw(float yawRate)
 {
-for (int i = 0; i < gyros.Count; i++)
-{
-byte index = gyroYaw[i];
-gyros[i].SetValue(profiles[index], (index % 2 == 0 ? yawRate : -yawRate) * MathHelper.RadiansPerSecondToRPM);
-}
+    for (int i = 0; i < gyros.Count; i++)
+    {
+        byte index = gyroYaw[i];
+        gyros[i].SetValue(profiles[index], (index % 2 == 0 ? yawRate : -yawRate) * MathHelper.RadiansPerSecondToRPM);
+    }
 }
 
 public void SetGyroPitch(float pitchRate)
 {
-for (int i = 0; i < gyros.Count; i++)
-{
-byte index = gyroPitch[i];
-gyros[i].SetValue(profiles[index], (index % 2 == 0 ? pitchRate : -pitchRate) * MathHelper.RadiansPerSecondToRPM);
-}
+    for (int i = 0; i < gyros.Count; i++)
+    {
+        byte index = gyroPitch[i];
+        gyros[i].SetValue(profiles[index], (index % 2 == 0 ? pitchRate : -pitchRate) * MathHelper.RadiansPerSecondToRPM);
+    }
 }
 
 public void SetGyroRoll(float rollRate)
 {
-for (int i = 0; i < gyros.Count; i++)
-{
-byte index = gyroRoll[i];
-gyros[i].SetValue(profiles[index], (index % 2 == 0 ? rollRate : -rollRate) * MathHelper.RadiansPerSecondToRPM);
-}
+    for (int i = 0; i < gyros.Count; i++)
+    {
+        byte index = gyroRoll[i];
+        gyros[i].SetValue(profiles[index], (index % 2 == 0 ? rollRate : -rollRate) * MathHelper.RadiansPerSecondToRPM);
+    }
 }
 
 public void ZeroTurnGyro()
 {
-for (int i = 0; i < gyros.Count; i++)
-{
-gyros[i].SetValue(profiles[gyroYaw[i]], 0f);
-gyros[i].SetValue(profiles[gyroPitch[i]], 0f);
-}
+    for (int i = 0; i < gyros.Count; i++)
+    {
+        gyros[i].SetValue(profiles[gyroYaw[i]], 0f);
+        gyros[i].SetValue(profiles[gyroPitch[i]], 0f);
+    }
 }
 
 public void ResetGyro()
 {
-foreach (IMyGyro gyro in gyros)
-{
-gyro.SetValue("Yaw", 0f);
-gyro.SetValue("Pitch", 0f);
-gyro.SetValue("Roll", 0f);
-}
+    foreach (IMyGyro gyro in gyros)
+    {
+        gyro.SetValue("Yaw", 0f);
+        gyro.SetValue("Pitch", 0f);
+        gyro.SetValue("Roll", 0f);
+    }
 }
 }
 
 public class PIDController
 {
-double integral;
-double lastInput;
+    double integral;
+    double lastInput;
 
-double gain_p;
-double gain_i;
-double gain_d;
-double upperLimit_i;
-double lowerLimit_i;
-double second;
+    double gain_p;
+    double gain_i;
+    double gain_d;
+    double upperLimit_i;
+    double lowerLimit_i;
+    double second;
 
-public PIDController(double pGain, double iGain, double dGain, double iUpperLimit = 0, double iLowerLimit = 0, float stepsPerSecond = 60f)
-{
-gain_p = pGain;
-gain_i = iGain;
-gain_d = dGain;
-upperLimit_i = iUpperLimit;
-lowerLimit_i = iLowerLimit;
-second = stepsPerSecond;
-}
+    public PIDController(double pGain, double iGain, double dGain, double iUpperLimit = 0, double iLowerLimit = 0, float stepsPerSecond = 60f)
+    {
+    gain_p = pGain;
+    gain_i = iGain;
+    gain_d = dGain;
+    upperLimit_i = iUpperLimit;
+    lowerLimit_i = iLowerLimit;
+    second = stepsPerSecond;
+    }
 
-public double Filter(double input, int round_d_digits)
-{
-double roundedInput = Math.Round(input, round_d_digits);
+    public double Filter(double input, int round_d_digits)
+    {
+        double roundedInput = Math.Round(input, round_d_digits);
 
-integral = integral + (input / second);
-integral = (upperLimit_i > 0 && integral > upperLimit_i ? upperLimit_i : integral);
-integral = (lowerLimit_i < 0 && integral < lowerLimit_i ? lowerLimit_i : integral);
+        integral = integral + (input / second);
+        integral = (upperLimit_i > 0 && integral > upperLimit_i ? upperLimit_i : integral);
+        integral = (lowerLimit_i < 0 && integral < lowerLimit_i ? lowerLimit_i : integral);
 
-double derivative = (roundedInput - lastInput) * second;
-lastInput = roundedInput;
+        double derivative = (roundedInput - lastInput) * second;
+        lastInput = roundedInput;
 
-return (gain_p * input) + (gain_i * integral) + (gain_d * derivative);
-}
+        return (gain_p * input) + (gain_i * integral) + (gain_d * derivative);
+    }
 
-public void Reset()
-{
-integral = lastInput = 0;
-}
+    public void Reset()
+    {
+        integral = lastInput = 0;
+    }
 }
 
 public class CustomConfiguration
 {
-public IMyTerminalBlock configBlock;
-public Dictionary<string, string> config;
+    public IMyTerminalBlock configBlock;
+    public Dictionary<string, string> config;
 
-public CustomConfiguration(IMyTerminalBlock block)
-{
-configBlock = block;
-config = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-}
+    public CustomConfiguration(IMyTerminalBlock block)
+    {
+    configBlock = block;
+    config = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    }
 
-public void Load()
-{
-ParseCustomData(configBlock, config);
-}
+    public void Load()
+    {
+    ParseCustomData(configBlock, config);
+    }
 
-public void Save()
-{
-WriteCustomData(configBlock, config);
-}
+    public void Save()
+    {
+    WriteCustomData(configBlock, config);
+    }
 
-public string Get(string key, string defVal = null)
-{
-return config.GetValueOrDefault(key.Trim(), defVal);
-}
+    public string Get(string key, string defVal = null)
+    {
+    return config.GetValueOrDefault(key.Trim(), defVal);
+    }
 
-public void Get(string key, ref string res)
-{
-string val;
-if (config.TryGetValue(key.Trim(), out val))
-{
-res = val;
-}
-}
+    public void Get(string key, ref string res)
+    {
+        string val;
+        if (config.TryGetValue(key.Trim(), out val))
+        {
+            res = val;
+        }
+    }
 
-public void Get(string key, ref int res)
-{
-int val;
-if (int.TryParse(Get(key), out val))
-{
-res = val;
-}
-}
+    public void Get(string key, ref int res)
+    {
+        int val;
+        if (int.TryParse(Get(key), out val))
+        {
+            res = val;
+        }
+    }
 
-public void Get(string key, ref float res)
-{
-float val;
-if (float.TryParse(Get(key), out val))
-{
-res = val;
-}
-}
+    public void Get(string key, ref float res)
+    {
+        float val;
+        if (float.TryParse(Get(key), out val))
+        {
+            res = val;
+        }
+    }
 
-public void Get(string key, ref double res)
-{
-double val;
-if (double.TryParse(Get(key), out val))
-{
-res = val;
-}
-}
+    public void Get(string key, ref double res)
+    {
+        double val;
+        if (double.TryParse(Get(key), out val))
+        {
+            res = val;
+        }
+    }
 
-public void Get(string key, ref bool res)
-{
-bool val;
-if (bool.TryParse(Get(key), out val))
-{
-res = val;
-}
-}
-public void Get(string key, ref bool? res)
-{
-bool val;
-if (bool.TryParse(Get(key), out val))
-{
-res = val;
-}
-}
+    public void Get(string key, ref bool res)
+    {
+        bool val;
+        if (bool.TryParse(Get(key), out val))
+        {
+            res = val;
+        }
+    }
+    public void Get(string key, ref bool? res)
+    {
+        bool val;
+        if (bool.TryParse(Get(key), out val))
+        {
+            res = val;
+        }
+    }
 
-public void Set(string key, string value)
-{
-config[key.Trim()] = value;
-}
+    public void Set(string key, string value)
+    {
+        config[key.Trim()] = value;
+    }
 
-public static void ParseCustomData(IMyTerminalBlock block, Dictionary<string, string> cfg, bool clr = true)
-{
-if (clr)
-{
-cfg.Clear();
-}
+    public static void ParseCustomData(IMyTerminalBlock block, Dictionary<string, string> cfg, bool clr = true)
+    {
+        if (clr)
+        {
+            cfg.Clear();
+        }
 
-string[] arr = block.CustomData.Split(new char[] {'\r','\n'}, StringSplitOptions.RemoveEmptyEntries);
-for (int i = 0; i < arr.Length; i++)
-{
-string ln = arr[i];
-string va;
+        string[] arr = block.CustomData.Split(new char[] {'\r','\n'}, StringSplitOptions.RemoveEmptyEntries);
+        for (int i = 0; i < arr.Length; i++)
+        {
+            string ln = arr[i];
+            string va;
 
-int p = ln.IndexOf('=');
-if (p > -1)
-{
-va = ln.Substring(p + 1);
-ln = ln.Substring(0, p);
-}
-else
-{
-va = "";
-}
-cfg[ln.Trim()] = va.Trim();
-}
-}
+            int p = ln.IndexOf('=');
+            if (p > -1)
+            {
+                va = ln.Substring(p + 1);
+                ln = ln.Substring(0, p);
+            }
+            else
+            {
+                va = "";
+            }
+            cfg[ln.Trim()] = va.Trim();
+        }
+    }
 
-public static void WriteCustomData(IMyTerminalBlock block, Dictionary<string, string> cfg)
-{
-StringBuilder sb = new StringBuilder(cfg.Count * 100);
-foreach (KeyValuePair<string, string> va in cfg)
-{
-sb.Append(va.Key).Append('=').Append(va.Value).Append('\n');
-}
-block.CustomData = sb.ToString();
-}
+    public static void WriteCustomData(IMyTerminalBlock block, Dictionary<string, string> cfg)
+    {
+        StringBuilder sb = new StringBuilder(cfg.Count * 100);
+        foreach (KeyValuePair<string, string> va in cfg)
+        {
+            sb.Append(va.Key).Append('=').Append(va.Value).Append('\n');
+        }
+        block.CustomData = sb.ToString();
+    }
 }
 
 public class CubeTree
 {
-public Vector3I[] ADJACENT_VECTORS = { new Vector3I(-1, 0, 0), new Vector3I(1, 0, 0), new Vector3I(0, -1, 0), new Vector3I(0, 1, 0), new Vector3I(0, 0, -1), new Vector3I(0, 0, 1) };
+    public Vector3I[] ADJACENT_VECTORS = { new Vector3I(-1, 0, 0), new Vector3I(1, 0, 0), new Vector3I(0, -1, 0), new Vector3I(0, 1, 0), new Vector3I(0, 0, -1), new Vector3I(0, 0, 1) };
 
-public TreeNode Root;
-public IMyCubeGrid Grid;
+    public TreeNode Root;
+    public IMyCubeGrid Grid;
 
-public CubeTree()
-{
+    public CubeTree()
+    {
 
-}
+    }
 
-public IEnumerator<int> InitTree(IMyCubeGrid grid, Vector3I start, int limit)
-{
-int counter = 0;
+    public IEnumerator<int> InitTree(IMyCubeGrid grid, Vector3I start, int limit)
+    {
+        int counter = 0;
 
-Grid = grid;
-Root = new TreeNode(Grid.Min, Grid.Max);
+        Grid = grid;
+        Root = new TreeNode(Grid.Min, Grid.Max);
 
-Stack<Vector3I> remaining = new Stack<Vector3I>();
-HashSet<Vector3I> tested = new HashSet<Vector3I>();
+        Stack<Vector3I> remaining = new Stack<Vector3I>();
+        HashSet<Vector3I> tested = new HashSet<Vector3I>();
 
-remaining.Push(start);
-tested.Add(start);
-Root.Add(start);
+        remaining.Push(start);
+        tested.Add(start);
+        Root.Add(start);
 
-bool exists;
-Vector3I next;
+        bool exists;
+        Vector3I next;
 
-while (remaining.Count > 0)
-{
-Vector3I current = remaining.Pop();
+        while (remaining.Count > 0)
+        {
+            Vector3I current = remaining.Pop();
 
-for (int i = 0; i < 6; i++)
-{
-next = current + ADJACENT_VECTORS[i];
-if (!tested.Contains(next))
-{
-tested.Add(next);
-exists = Grid.CubeExists(next);
-if (exists)
-{
-remaining.Push(next);
-Root.Add(next);
-}
-}
-}
+            for (int i = 0; i < 6; i++)
+            {
+            next = current + ADJACENT_VECTORS[i];
+            if (!tested.Contains(next))
+            {
+            tested.Add(next);
+            exists = Grid.CubeExists(next);
+            if (exists)
+            {
+            remaining.Push(next);
+            Root.Add(next);
+            }
+            }
+            }
 
-counter++;
-if (counter % limit == 0)
-{
-yield return counter;
-}
-}
-}
+            counter++;
+            if (counter % limit == 0)
+            {
+            yield return counter;
+            }
+        }
+    }
 
-public bool TestRayHit(Ray ray)
-{
-Vector3I rayCenter = new Vector3I(ray.Position);
+    public bool TestRayHit(Ray ray)
+    {
+        Vector3I rayCenter = new Vector3I(ray.Position);
 
-Stack<TreeNode> remaining = new Stack<TreeNode>();
+        Stack<TreeNode> remaining = new Stack<TreeNode>();
 
-remaining.Push(Root);
+        remaining.Push(Root);
 
-while (remaining.Count > 0)
-{
-TreeNode current = remaining.Pop();
+        while (remaining.Count > 0)
+        {
+            TreeNode current = remaining.Pop();
 
-if (!current.IsLeaf)
-{
-for (int i = 0; i < 8; i++)
-{
-TreeNode child = current.Children[i];
-if (child != null)
-{
-if (child.HitBox.Intersects(ray) != null)
-{
-if (child.IsLeaf)
-{
-if (child.Center != rayCenter)
-{
-return true;
-}
-}
-else
-{
-remaining.Push(child);
-}
-}
-}
-}
-}
-}
+            if (!current.IsLeaf)
+            {
+                for (int i = 0; i < 8; i++)
+                {
+                    TreeNode child = current.Children[i];
+                    if (child != null)
+                    {
+                        if (child.HitBox.Intersects(ray) != null)
+                        {
+                            if (child.IsLeaf)
+                            {
+                                if (child.Center != rayCenter)
+                                {
+                                    return true;
+                                }
+                            }
+                            else
+                            {
+                                remaining.Push(child);
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
-return false;
-}
+        return false;
+    }
 }
 
 public class TreeNode
 {
-public Vector3I? Min;
-public Vector3I? Max;
+    public Vector3I? Min;
+    public Vector3I? Max;
 
-public Vector3I Center;
-public BoundingBox HitBox;
+    public Vector3I Center;
+    public BoundingBox HitBox;
 
-public bool IsLeaf;
-public TreeNode[] Children;
+    public bool IsLeaf;
+    public TreeNode[] Children;
 
-public TreeNode(Vector3I min, Vector3I max)
-{
-if (min == max)
-{
-IsLeaf = true;
-Children = null;
+    public TreeNode(Vector3I min, Vector3I max)
+    {
+        if (min == max)
+        {
+            IsLeaf = true;
+            Children = null;
 
-Center = min;
-}
-else
-{
-IsLeaf = false;
-Children = new TreeNode[8];
+            Center = min;
+        }
+        else
+        {
+            IsLeaf = false;
+            Children = new TreeNode[8];
 
-Min = min;
-Max = max;
+            Min = min;
+            Max = max;
 
-Center = min + ((max - min) / 2);
-}
+            Center = min + ((max - min) / 2);
+        }
 
-HitBox = new BoundingBox(min - new Vector3(0.5f, 0.5f, 0.5f), max + new Vector3(0.5f, 0.5f, 0.5f));
-}
+        HitBox = new BoundingBox(min - new Vector3(0.5f, 0.5f, 0.5f), max + new Vector3(0.5f, 0.5f, 0.5f));
+    }
 
-public void Add(Vector3I cube)
-{
-if (IsLeaf)
-{
-return;
-}
-else
-{
-int index = GetChildIndex(cube);
-if (Children[index] == null)
-{
-Vector3I newMin = new Vector3I();
-Vector3I newMax = new Vector3I();
-newMin.X = (cube.X <= Center.X ? Min.Value.X : Center.X + 1);
-newMin.Y = (cube.Y <= Center.Y ? Min.Value.Y : Center.Y + 1);
-newMin.Z = (cube.Z <= Center.Z ? Min.Value.Z : Center.Z + 1);
-newMax.X = (cube.X <= Center.X ? Center.X : Max.Value.X);
-newMax.Y = (cube.Y <= Center.Y ? Center.Y : Max.Value.Y);
-newMax.Z = (cube.Z <= Center.Z ? Center.Z : Max.Value.Z);
-Children[index] = new TreeNode(newMin, newMax);
-}
-Children[index].Add(cube);
-}
-}
+    public void Add(Vector3I cube)
+    {
+        if (IsLeaf)
+        {
+            return;
+        }
+        else
+        {
+            int index = GetChildIndex(cube);
+            if (Children[index] == null)
+            {
+                Vector3I newMin = new Vector3I();
+                Vector3I newMax = new Vector3I();
+                newMin.X = (cube.X <= Center.X ? Min.Value.X : Center.X + 1);
+                newMin.Y = (cube.Y <= Center.Y ? Min.Value.Y : Center.Y + 1);
+                newMin.Z = (cube.Z <= Center.Z ? Min.Value.Z : Center.Z + 1);
+                newMax.X = (cube.X <= Center.X ? Center.X : Max.Value.X);
+                newMax.Y = (cube.Y <= Center.Y ? Center.Y : Max.Value.Y);
+                newMax.Z = (cube.Z <= Center.Z ? Center.Z : Max.Value.Z);
+                Children[index] = new TreeNode(newMin, newMax);
+            }
+            Children[index].Add(cube);
+        }
+    }
 
-public int GetChildIndex(Vector3I cube)
-{
-return (cube.X <= Center.X ? 0 : 1) + (cube.Y <= Center.Y ? 0 : 2) + (cube.Z <= Center.Z ? 0 : 4);
-}
+    public int GetChildIndex(Vector3I cube)
+    {
+        return (cube.X <= Center.X ? 0 : 1) + (cube.Y <= Center.Y ? 0 : 2) + (cube.Z <= Center.Z ? 0 : 4);
+    }
 }
