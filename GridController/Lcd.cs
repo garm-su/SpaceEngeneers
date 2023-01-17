@@ -80,7 +80,10 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
 
         public string lcdDamageInfo(int strsize)
         {
-            return "Damaged blocks:\n" + string.Join("\n", gridDamagedBlocks) + "\n";
+            string result = "";
+            result = "Damaged blocks:\n" + string.Join("\n", gridDamagedBlocks) + "\n";
+            result = result + "Destroyed blocks:\n"+ string.Join("\n", gridDestroyedBlocks) + "\n";
+            return result;
         }
 
         public string lcdShowLine(char delimiter, int strsize)

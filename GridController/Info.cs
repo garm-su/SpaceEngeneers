@@ -23,7 +23,11 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
     public class Program : GridStatusVersion.Program //@remove
     { //@remove
         public const String Ver = "1.0";
-        public List<IMyTerminalBlock> allTBlocks = new List<IMyTerminalBlock>();
+        public List<IMyTerminalBlock> allGridTerminalBlocks = new List<IMyTerminalBlock>();
+        public List<IMyThrust> gridThrusters = new List<IMyThrust>();
+        public List<IMySensorBlock> gridSensors = new List<IMySensorBlock>();
+        List<IMyPowerProducer> gridGasEngines = new List<IMyPowerProducer>();
+        List<IMyReactor> gridReactors = new List<IMyReactor>();
 
         public string additionalStatus = "";
 
@@ -69,11 +73,21 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
         public List<string> getDestroyedBlocks()
         {
             List<string> result = new List<string>();
+            int counter = 0;
             if (checkDestroyedBlocks)
             {
-                List<IMyTerminalBlock> currentState = new List<IMyTerminalBlock>();
-                reScanObjectsLocal(currentState);
-                destroyedAmount = allTBlocks.Count() - currentState.Count();
+                //List<IMyTerminalBlock> currentState = new List<IMyTerminalBlock>();
+                foreach(var block in allGridTerminalBlocks)
+                {
+                    if(block.Closed)
+                    {
+                        counter += 1;
+                        result.Add(block.CustomName);
+                    }
+                }
+                destroyedAmount = counter;
+                //reScanObjectsLocal(currentState);
+                //destroyedAmount = allTBlocks.Count() - currentState.Count();
                 //todo: if block in allBlocks and not in current state add Block.CustomName to result;
                 //todo: add repair projector with tag [STATUS] as source
             }
@@ -90,7 +104,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
             targets = getTurretsTargets();
             gridDamagedBlocks = getDamagedBlocks();
             gridDestroyedBlocks = getDestroyedBlocks();
-            damagedBlockRatio = gridDamagedBlocks.Count() / allTBlocks.Count();
+            damagedBlockRatio = gridDamagedBlocks.Count() / allGridTerminalBlocks.Count();
             destroyedAmount = gridDestroyedBlocks.Count();
         }
 
@@ -102,17 +116,16 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
         public void saveGridState(bool update = false)
         {
             if (gridStateSaved && !update) return;
-            reScanObjectsLocal(allTBlocks);
+            reScanObjectsLocal(allGridTerminalBlocks);
 
-            List<IMyPowerProducer> gasEngines = new List<IMyPowerProducer>();
             List<IMyThrust> gasThrusters = new List<IMyThrust>();
-            List<IMyReactor> reactors = new List<IMyReactor>();
-            reScanObjectsLocal(gasEngines, item => item.BlockDefinition.SubtypeId.Contains("Hydrogen"));
+            reScanObjectsLocal(gridGasEngines, item => item.BlockDefinition.SubtypeId.Contains("Hydrogen"));
             reScanObjectsLocal(gasThrusters, item => item.BlockDefinition.SubtypeId.Contains("Hydrogen"));
-            reScanObjectsLocal(reactors);
+            reScanObjectsLocal(gridReactors);
+            reScanObjectsLocal(gridSensors);
 
-            hasGasFueledBlocks = (gasEngines.Count() > 0) || (gasThrusters.Count() > 0);
-            hasReactors = reactors.Count() > 0;
+            hasGasFueledBlocks = (gridGasEngines.Count() > 0) || (gasThrusters.Count() > 0);
+            hasReactors = gridReactors.Count() > 0;
 
             //todo save armor block state
             gridStateSaved = true;
