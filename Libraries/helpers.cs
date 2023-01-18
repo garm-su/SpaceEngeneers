@@ -39,7 +39,7 @@ namespace SpaceEngineers.UWBlockPrograms.Helpers //@remove
 { //@remove
     public class Program : MyGridProgram //@remove
     { //@remove
-        public double percentOf(double current, double maximum)
+        public double fractionOf(double current, double maximum)
         {
             return (maximum == 0 ? 1 : 1 * current / maximum);
         }

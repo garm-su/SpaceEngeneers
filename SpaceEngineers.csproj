@@ -75,14 +75,14 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Program.cs" />
+    
     <Compile Include="Checker.cs" />
 
     <Compile Include="Libraries/json.cs" />
     <Compile Include="Libraries/log.cs" />
     <Compile Include="Libraries/grid.cs" />
     <Compile Include="Libraries/helpers.cs" />
-
-    <Compile Include="Examples/excav_os.cs" />
     
     <Compile Include="ShutdownEngines.cs" />
     <Compile Include="IceBase.cs" />

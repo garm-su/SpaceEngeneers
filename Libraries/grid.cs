@@ -96,7 +96,7 @@ namespace SpaceEngineers.UWBlockPrograms.Grid //@remove
 
             objects.ForEach((obj) => update(obj, ref current_capacity, ref max_capacity));
 
-            return percentOf(current_capacity, max_capacity);
+            return fractionOf(current_capacity, max_capacity);
         }
 
         public double getGridBatteryCharge()

@@ -50,8 +50,8 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
             alarmCount = 25;
         //MyObjectBuilder_Component / MyObjectBuilder_PhysicalObject / MyObjectBuilder_PhysicalGunObject / MyObjectBuilder_ConsumableItem / MyObjectBuilder_AmmoMagazine / MyObjectBuilder_Datapad / MyObjectBuilder_Ingot
 
-        int minBatteryCharge = 80;
-        int maxBatteryCharge = 90;
+        double minBatteryCharge = 0.8;
+        double maxBatteryCharge = 0.9;
         bool h2generatorStarted = false;
 
         const String ICE = "Ice";
