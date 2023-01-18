@@ -32,76 +32,34 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
 
         public string lcdInventoryInfo(Dictionary<string, int> items, int strsize)
         {
+
+            List<string> result = new List<string>();
+
             if (items.Count == 0) return "[Empty]";
-            string itemsStr = "";
 
             foreach (var i in items)
             {
                 var objectName = i.Key.Split('.').Last();
-                itemsStr += objectName + ":" + number(i.Value, strsize - objectName.Length - 1) + "\n";
+                //todo: map objectName to readable names
+                result.Add(objectName + ":" + number(i.Value, strsize - objectName.Length - 1));
                 //todo: if (strsize - objectName.Length - 1 < 0)
             }
-            return itemsStr;
+            return string.Join("\n", result);
         }
 
-        public string lcdBatteryCharge(int strsize)
-        {
-            if (strsize > 12)
-            {
-                int chargeLen = (int)((strsize - 12) * gridCharge);
-                string result = new string('█', chargeLen);
-                string spacer = new string(' ', strsize - chargeLen - 12);
-                result = "Battery:" + result + spacer + Math.Round(gridCharge * 100).ToString() + "%\n";
-                return result;
-            }
-            else
-            {
-                string result = "Battery:" + Math.Round(gridCharge * 100).ToString() + "%\n";
-                return result;
-            }
-        }
-
-        public string lcdFuelInfo(int strsize)
-        {
-            if (strsize > 9)
-            {
-                int chargeLen = (int)((strsize - 9) * gridCharge);
-                string result = new string('█', chargeLen);
-                string spacer = new string(' ', strsize - chargeLen - 9);
-                result = "Fuel:" + result + spacer + Math.Round(gridGas * 100).ToString() + "%\n";
-                return result;
-            }
-            else
-            {
-                string result = "Fuel:" + Math.Round(gridGas * 100).ToString() + "%\n";
-                return result;
-            }
-        }
-
-        public string lcdDamageInfo(int strsize)
-        {
-            string result = "";
-            result = "Damaged blocks:\n" + string.Join("\n", gridDamagedBlocks) + "\n";
-            result = result + "Destroyed blocks:\n" + string.Join("\n", gridDestroyedBlocks) + "\n";
-            return result;
-        }
-
-        public string lcdShowLine(char delimiter, int strsize)
-        {
-            string result = new string(delimiter, strsize);
-            result += "\n";
-            return result;
-        }
-
-        public string lcdInventorySpecificInfo(int strsize, string subtype)
+        public string lcdInventoryInfo(Dictionary<string, int> items, int strsize, string subtype)
         {
             List<string> result = new List<string>();
-            foreach (var i in gridInventory)
+            
+            if (items.Count == 0) return "[Empty]";
+
+            foreach (var i in items)
             {
                 var objectType = i.Key.Split('.').First();
                 var objectName = i.Key.Split('.').Last();
+                //todo: map objectName to readable names                
                 //todo: if (strsize - objectName.Length - 1 < 0)
-                switch (subtype)
+                switch(subtype)
                 {
                     case "Ore":
                         if (objectType.Contains("_Ore"))
@@ -115,11 +73,10 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
                             result.Add(objectName + " ingots:" + number(i.Value, strsize - objectName.Length - 8));
                         }
                         break;
-
+                    
                     case "Components":
                         if (objectType.Contains("_Component"))
                         {
-                            //todo: map to readable names
                             result.Add(objectName + ":" + number(i.Value, strsize - objectName.Length - 1));
                         }
                         break;
@@ -127,7 +84,6 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
                     case "Ammo":
                         if (objectType.Contains("_AmmoMagazine"))
                         {
-                            //todo: map to readable names
                             result.Add(objectName + ":" + number(i.Value, strsize - objectName.Length - 1));
                         }
                         break;
@@ -135,7 +91,6 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
                     case "Equip":
                         if (objectType.Contains("_PhysicalGunObject") || objectType.Contains("_ConsumableItem") || (objectType.Contains("ContainerObject")))
                         {
-                            //todo: map to readable names
                             result.Add(objectName + ":" + number(i.Value, strsize - objectName.Length - 1));
                         }
                         break;
@@ -146,12 +101,92 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
             }
             if (result.Count() == 0)
             {
-                result.Add("[EMPTY]");
+                result.Add("[Empty]");
             }
-            return string.Join("\n", result) + "\n";
+            return string.Join("\n", result);
         }
 
-        public void lcdDraw(string infoTag, string statusTag)
+        public string lcdBatteryCharge(int strsize)
+        {
+            if (strsize > 12)
+            {
+                int chargeLen = (int)((strsize - 12) * gridCharge);
+                string result = new string('█', chargeLen);
+                string spacer = new string(' ', strsize - chargeLen - 12);
+                result = "Battery:" + result + spacer + Math.Round(gridCharge * 100).ToString() + "%";
+                return result;
+            }
+            else
+            {
+                string result = "Battery:" + Math.Round(gridCharge * 100).ToString() + "%";
+                return result;
+            }
+        }
+
+        public string lcdFuelInfo(int strsize)
+        {
+            if (strsize > 9)
+            {
+                int chargeLen = (int)((strsize - 9) * gridCharge);
+                string result = new string('█', chargeLen);
+                string spacer = new string(' ', strsize - chargeLen - 9);
+                result = "Fuel:" + result + spacer + Math.Round(gridGas * 100).ToString() + "%";
+                return result;
+            }
+            else
+            {
+                string result = "Fuel:" + Math.Round(gridGas * 100).ToString() + "%";
+                return result;
+            }
+        }
+
+        public string lcdDamageInfo(int strsize)
+        {
+            string result = "";       
+            //todo: add info about damaged armor    
+            if(gridDamagedBlocks.Count() == 0 || gridDestroyedBlocks.Count() == 0)
+            {
+                return "No damaged blocks detected";
+            }
+            else
+            {
+                if(gridDamagedBlocks.Count() != 0)
+                {
+                    result = "Damaged blocks:\n" + string.Join("\n", gridDamagedBlocks);
+                }
+                if(gridDestroyedBlocks.Count() != 0 )
+                {
+                    result = result + "\nDestroyed blocks:\n"+ string.Join("\n", gridDestroyedBlocks);
+                }
+            }
+            return result;
+        }
+
+        public string lcdShowLine(char delimiter, int strsize)
+        {
+            string result = new string(delimiter, strsize);
+            return result;
+        }
+        void initDrawSurface(IMyTextSurface s)
+        {
+            s.ContentType = ContentType.SCRIPT;
+            s.Script = "";
+        }
+        public void lcdDrawSpriteText(IMyTextSurface s, string text, Color textColor, TextAlignment align)
+        {
+            initDrawSurface(s);
+//        Vector2 surfaceSize = surf.TextureSize;            
+//        Vector2 screenCenter = surfaceSize * 0.5f;
+            float textSize = 1.5f;
+
+            using (var frame = s.DrawFrame())
+            {
+                var sprite = MySprite.CreateText(text, "Debug", textColor, textSize, TextAlignment.CENTER);
+                //text.Position = textPos;
+                frame.Add(sprite);
+            }
+        }
+        public void lcdDraw(string infoTag, string statusTag, bool isSprite = false)
         {
             var info_displays = new List<IMyTextPanel>();
             // var ini = new MyIni();
@@ -168,65 +203,72 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
 
             foreach (var display in info_displays)
             {
-                var result = "";
+                var result = new List<string>();
                 var letters = (int)(display.SurfaceSize.X * (100.0 - 2.0 * display.TextPadding) / 100.0 / display.MeasureStringInPixels(new StringBuilder("X"), display.Font, display.FontSize).X);
 
                 foreach (var command in display.CustomData.Split('\n'))
                 {
                     display.ContentType = ContentType.TEXT_AND_IMAGE;
                     display.Font = _lcdFont;
-                    display.FontColor = mainColor;
+                    //display.FontColor = mainColor;
 
                     if (command == "") continue;
                     switch (command)
                     {
                         case "Battery":
-                            result += lcdBatteryCharge(letters);
+                            result.Add(lcdBatteryCharge(letters));
                             break;
                         case "Fuel":
-                            result += lcdFuelInfo(letters);
+                            result.Add(lcdFuelInfo(letters));
                             break;
                         case "Damage":
-                            result += lcdDamageInfo(letters);
+                            result.Add(lcdDamageInfo(letters));
                             break;
                         case "Alerts":
                             //result += lcdAlerts(letters);
                             break;
                         case "Inventory":
-                            result += lcdInventoryInfo(items, letters);
+                            result.Add(lcdInventoryInfo(items, letters));
                             break;
                         case "AimInfo":
                             //result += lcdAimModes(letters);
                             break;
                         case "Ore":
-                            result += lcdInventorySpecificInfo(letters, "Ore");
+                            result.Add(lcdInventoryInfo(items, letters, "Ore"));
                             break;
                         case "Ingots":
-                            result += lcdInventorySpecificInfo(letters, "Ingots");
+                            result.Add(lcdInventoryInfo(items, letters, "Ingots"));
                             break;
                         case "Ammo":
-                            result += lcdInventorySpecificInfo(letters, "Ammo");
+                            result.Add(lcdInventoryInfo(items, letters, "Ammo"));
                             break;
                         case "Components":
-                            result += lcdInventorySpecificInfo(letters, "Components");
+                            result.Add(lcdInventoryInfo(items, letters, "Components"));
                             break;
                         case "BaseLoader":
-                            if (BaseStatus.ContainsKey("Loader")) result += BaseStatus["Loader"] + "\n";
+                            if (BaseStatus.ContainsKey("Loader")) result.Add(BaseStatus["Loader"]);
                             break;
                         case "BaseInfo":
-                            if (BaseStatus.ContainsKey("Info")) result += BaseStatus["Info"] + "\n";
+                            if (BaseStatus.ContainsKey("Info")) result.Add(BaseStatus["Info"]);
                             break;
                         case "BaseWarn":
-                            if (BaseStatus.ContainsKey("Warn")) result += BaseStatus["Warn"] + "\n";
+                            if (BaseStatus.ContainsKey("Warn")) result.Add(BaseStatus["Warn"]);
                             break;
                         case "BaseAlarm":
-                            if (BaseStatus.ContainsKey("Alarm")) result += BaseStatus["Alarm"] + "\n";
+                            if (BaseStatus.ContainsKey("Alarm")) result.Add(BaseStatus["Alarm"]);
                             break;
 
                         default:
                             if (command.Length == 1)
                             {
-                                result += lcdShowLine(command[0], letters);
+                                if (isSprite)
+                                {
+                                    result.Add("---");
+                                }
+                                else
+                                {
+                                    result.Add(lcdShowLine(command[0], letters));
+                                }
                             }
                             else
                             {
@@ -235,8 +277,24 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
                             break;
                     }
                 }
-
-                display.WriteText(result);
+                if (isSprite)
+                {
+                    foreach(var elem in result)
+                    {
+                        if(elem != "---")
+                        {
+                            //lcdDrawSpriteText();
+                        }
+                        else
+                        {
+                            //draw line
+                        }
+                    }
+                }
+                else
+                {
+                    display.WriteText(string.Join("\n", result));
+                }
             }
         }
 

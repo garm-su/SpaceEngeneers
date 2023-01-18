@@ -41,9 +41,8 @@ public Program(){
 	Runtime.UpdateFrequency = UpdateFrequency.Update10;
 }
 
-void initDrawPanel(IMyTextSurface s)
+void initDrawSurface(IMyTextSurface s)
 {
-//	s.ScriptBackgroundColor = _black;
 	s.ContentType = ContentType.SCRIPT;
 	s.Script = "";
 }
@@ -69,12 +68,14 @@ public void Main(string arg)
 	{	
 		Vector2 tst = new Vector2(0f, 0f);
 		IMyTextSurface d = elem as IMyTextSurface;
-		initDrawPanel(d);
+		initDrawSurface(d);
         using (var frame = d.DrawFrame())
         {
-			var sprite = new MySprite(SpriteType.TEXTURE, "Circle", color: new Color(200, 200, 200), size: new Vector2(100f, 100f));
-			sprite.Position = new Vector2(256f,256f);
+            var text = "No damage detected dummy";
+			var sprite = MySprite.CreateText(text, "Debug", new Color(255,150,0), 1.5f, TextAlignment.LEFT);
+			sprite.Position = new Vector2(10f,10f);
             frame.Add(sprite);
+            frame.Add(new MySprite(SpriteType.TEXTURE, "SquareSimple", new Vector2(0f, 20f), new Vector2(512f, 1f), new Color(255,150,0), "test", TextAlignment.CENTER, 0f));
 		}		
 		Echo(d.TextureSize.ToString());
 		Echo(d.SurfaceSize.ToString());
