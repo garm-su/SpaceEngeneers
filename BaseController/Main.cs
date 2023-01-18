@@ -41,7 +41,10 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
             alarmTag = "[ALARM]",
             infoTag = "[INFO BASE]";
 
-        Log logger;
+        public string statusChannelTag = "RDOStatusChannel";
+        public string commandChannelTag = "RDOCommandChannel";
+
+        public Log logger;
 
         const double
             warningVolume = 85,
@@ -82,7 +85,7 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
 
         long countClear = 0;
 
-        Messaging Alarms = new Messaging();
+        Messaging Alarms;
 
         List<FactoryController> factories = new List<FactoryController> {
            new FactoryController("Factory Small Projector", "LCD Factory")
@@ -105,6 +108,7 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
         {
             Runtime.UpdateFrequency = UpdateFrequency.Update10;
             logger = new Log(this);
+            Alarms = new Messaging(this);
 
             h2generatorEnable(false);
             foreach (var fc in factories) fc.connect(this);
@@ -597,7 +601,6 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
 
         public void Main(string argument, UpdateType updateSource)
         {
-            Alarms.next();
             iceAlarm = false;
 
             if (h2generatorStarted)
@@ -649,26 +652,7 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
             foreach (var fc in factories) fc.check();
 
             calculateVolume();
-
-            var infoLCD = GridTerminalSystem.GetBlockWithName(infoTag) as IMyTextSurface;
-            if (infoLCD == null)
-            {
-                Alarms.warn("THERE IS NO " + infoTag + " LCD");
-            }
-            else
-            {
-                infoLCD.WriteText(Alarms.getInfo());
-            }
-
-            var alarmLCD = GridTerminalSystem.GetBlockWithName(alarmTag) as IMyTextSurface;
-            if (alarmLCD == null)
-            {
-                Echo("THERE IS NO " + alarmTag + " LCD");
-            }
-            else
-            {
-                alarmLCD.WriteText(Alarms.getError());
-            }
+            Alarms.next();
         }
 
         private void alarmNoObject(HashSet<string> foundObjects, Dictionary<string, int> minObj)

@@ -46,6 +46,8 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
         public bool lockedState = false;
         public bool hasGasFueledBlocks = false;
         public bool hasReactors = false;
+
+        public Dictionary<String, String> BaseStatus = new Dictionary<String, String>();
 		
         public void setAdditionalStatus(String s)
         {

@@ -82,7 +82,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
         {
             string result = "";
             result = "Damaged blocks:\n" + string.Join("\n", gridDamagedBlocks) + "\n";
-            result = result + "Destroyed blocks:\n"+ string.Join("\n", gridDestroyedBlocks) + "\n";
+            result = result + "Destroyed blocks:\n" + string.Join("\n", gridDestroyedBlocks) + "\n";
             return result;
         }
 
@@ -101,7 +101,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
                 var objectType = i.Key.Split('.').First();
                 var objectName = i.Key.Split('.').Last();
                 //todo: if (strsize - objectName.Length - 1 < 0)
-                switch(subtype)
+                switch (subtype)
                 {
                     case "Ore":
                         if (objectType.Contains("_Ore"))
@@ -115,7 +115,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
                             result.Add(objectName + " ingots:" + number(i.Value, strsize - objectName.Length - 8));
                         }
                         break;
-                    
+
                     case "Components":
                         if (objectType.Contains("_Component"))
                         {
@@ -133,7 +133,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
                         break;
 
                     case "Equip":
-                        if (objectType.Contains("_PhysicalGunObject")||objectType.Contains("_ConsumableItem")||(objectType.Contains("ContainerObject")))
+                        if (objectType.Contains("_PhysicalGunObject") || objectType.Contains("_ConsumableItem") || (objectType.Contains("ContainerObject")))
                         {
                             //todo: map to readable names
                             result.Add(objectName + ":" + number(i.Value, strsize - objectName.Length - 1));
@@ -144,7 +144,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
                 }
 
             }
-            if(result.Count() == 0)
+            if (result.Count() == 0)
             {
                 result.Add("[EMPTY]");
             }
@@ -203,13 +203,26 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
                             break;
                         case "Ingots":
                             result += lcdInventorySpecificInfo(letters, "Ingots");
-                            break;                                                        
+                            break;
                         case "Ammo":
                             result += lcdInventorySpecificInfo(letters, "Ammo");
-                            break;                                                        
+                            break;
                         case "Components":
                             result += lcdInventorySpecificInfo(letters, "Components");
                             break;
+                        case "BaseLoader":
+                            if (BaseStatus.ContainsKey("Loader")) result += BaseStatus["Loader"] + "\n";
+                            break;
+                        case "BaseInfo":
+                            if (BaseStatus.ContainsKey("Info")) result += BaseStatus["Info"] + "\n";
+                            break;
+                        case "BaseWarn":
+                            if (BaseStatus.ContainsKey("Warn")) result += BaseStatus["Warn"] + "\n";
+                            break;
+                        case "BaseAlarm":
+                            if (BaseStatus.ContainsKey("Alarm")) result += BaseStatus["Alarm"] + "\n";
+                            break;
+
                         default:
                             if (command.Length == 1)
                             {

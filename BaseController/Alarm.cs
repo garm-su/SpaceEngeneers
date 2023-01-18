@@ -18,22 +18,42 @@ using Sandbox.ModAPI.Contracts;
 using Sandbox.Game;
 using Sandbox.Common;
 using Sandbox.Common.ObjectBuilders;
+using SpaceEngineers.UWBlockPrograms.BaseController;
 
 public class MessageOfType
 {
     public List<string> messages;
     public bool was;
+    public String prefix;
 
-    public MessageOfType()
+    public MessageOfType(String prefix)
     {
         this.messages = new List<String>();
-        this.was = false;
+        this.was = true;
+        this.prefix = prefix;
     }
 
-    public void next()
+    override
+    public string ToString()
     {
+        return (prefix == "" || messages.Count == 0 ? "" : prefix + ":\n") + String.Join("\n", messages);
+    }
+
+    public String next()
+    {
+        String result = "Foo";
+        if (was || messages.Count > 0)
+        {
+            var command = new JsonObject("");
+            command.Add(new JsonPrimitive("action", "BaseStatus"));
+            command.Add(new JsonPrimitive("type", this.prefix));
+            command.Add(new JsonPrimitive("value", this.ToString()));
+            result = command.ToString();
+        }
+
         this.was = this.messages.Count > 0;
         this.messages.Clear();
+        return result;
     }
 
     public void add(String mess)
@@ -49,16 +69,24 @@ public class Messaging
     private MessageOfType warningMess;
     private MessageOfType infoMess;
 
+    private Dictionary<String, MessageOfType> Messages;
+
     readonly string[] animFrames = new[] { "|---", "-|--", "--|-", "---|", "--|-", "-|--" };
     int runningFrame;
     int runningMult;
 
-    public Messaging()
+    private Program parent;
+
+    public Messaging(Program parent)
     {
+        this.parent = parent;
         alarmActive = false;
-        alarmMess = new MessageOfType();
-        warningMess = new MessageOfType();
-        infoMess = new MessageOfType();
+        Messages = new Dictionary<String, MessageOfType>();
+
+        Messages["Alarm"] = alarmMess = new MessageOfType("Alarm");
+        Messages["Warn"] = warningMess = new MessageOfType("Warn");
+        Messages["Info"] = infoMess = new MessageOfType("Info");
+
         runningFrame = 0;
         runningMult = 10;
     }
@@ -76,23 +104,30 @@ public class Messaging
         warningMess.add(message);
     }
 
+    void updateLoader()
+    {
+        var command = new JsonObject("");
+        runningFrame = (runningFrame + 1) % (animFrames.Count() * runningMult);
+        command.Add(new JsonPrimitive("action", "BaseStatus"));
+        command.Add(new JsonPrimitive("type", "Loader"));
+        command.Add(new JsonPrimitive("value", animFrames[runningFrame / runningMult]));
+        parent.IGC.SendBroadcastMessage(parent.commandChannelTag, command.ToString());
+    }
+
     public void next()
     {
-        runningFrame = (runningFrame + 1) % (animFrames.Count() * runningMult);
-        warningMess.next();
-        infoMess.next();
-        alarmMess.next();
+        updateLoader();
+
+        foreach (var message in Messages.Values)
+        {
+            var status = message.next();
+            parent.Echo("Next(" + message.prefix + "): " + (status == null ? "Null" : "\"" + status.ToString() + "\""));
+            if (status != null)
+            {
+                parent.logger.write(status);
+                parent.IGC.SendBroadcastMessage(parent.commandChannelTag, status);
+            }
+        };
     }
 
-    public String getInfo()
-    {
-        return String.Join("\n", infoMess.messages);
-    }
-
-    public string getError()
-    {
-        var isAlarms = alarmMess.messages.Count() > 0;
-        var prefix = (isAlarms ? "Alrm" : "Warn") + ": ";
-        return animFrames[runningFrame / runningMult] + "\n" + prefix + String.Join("\n" + prefix, (isAlarms ? alarmMess : warningMess).messages);
-    }
 }

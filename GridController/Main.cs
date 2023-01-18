@@ -228,11 +228,11 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
 
         public void Main(string arg)
         {
-//logging and service actions
+            //logging and service actions
             logger.write("Main " + arg);
             if (arg.StartsWith(LogTag)) return;
 
-//parse args and execute commands
+            //parse args and execute commands
             //args = new ArgParser(arg);
 
             if (arg != "")
@@ -287,19 +287,19 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
             }
 
 
-//rescan and init - remove section after refactor
+            //rescan and init - remove section after refactor
             List<IMyTextPanel> request_displays = new List<IMyTextPanel>();
             reScanObjectGroupLocal(request_displays, RequestTag);
             targets.Clear();
 
-//runtime actions
+            //runtime actions
             updateGridInfo();
             checkMaxSpeed();
             lcdDraw(InfoTag, StatusTag);
 
-//send
+            //send
             //statusListener = IGC.RegisterBroadcastListener(statusChannelTag);
-            IGC.SendBroadcastMessage(statusChannelTag, getStatus(), TransmissionDistance.CurrentConstruct);
+            IGC.SendBroadcastMessage(statusChannelTag, getStatus());
 
             commandListener = IGC.RegisterBroadcastListener(commandChannelTag);
             while (commandListener.HasPendingMessage)
@@ -310,10 +310,23 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
                 {
                     if (newRequest.Data is string)
                     {
-                        message = newRequest.Data.ToString();
-                        foreach (IMyTextSurface d in request_displays)
+                        JsonObject jsonData;
+                        try
                         {
-                            d.WriteText(message);
+                            jsonData = (new JSON((string)newRequest.Data)).Parse() as JsonObject;
+                        }
+                        catch (Exception e) // in case something went wrong (either your json is wrong or my library has a bug :P)
+                        {
+                            logger.write("There's somethign wrong with your json: " + e.Message);
+                            continue;
+                        }
+
+                        //todo move to sparate files
+                        switch (((JsonPrimitive)jsonData["action"]).GetValue<String>())
+                        {
+                            case "BaseStatus":
+                                BaseStatus[((JsonPrimitive)jsonData["type"]).GetValue<String>()] = ((JsonPrimitive)jsonData["value"]).GetValue<String>();
+                                break;
                         }
                     }
                 }
