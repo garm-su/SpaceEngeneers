@@ -59,9 +59,11 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusConfig //@remove
 
         public Log logger;
 
+        public bool hasConfSection(IMyTerminalBlock obj) => MyIni.HasSection(obj.CustomData, ConfSection);
+
         public void loadConfig()
         {
-            if (!MyIni.HasSection(Me.CustomData, ConfSection)) return;
+            if (!hasConfSection(Me)) return;
             var ini = new MyIni();
             if (!ini.TryParse(Me.CustomData)) return;
             InitValue(ini.Get(ConfSection, "SKIP"), ref SKIP);

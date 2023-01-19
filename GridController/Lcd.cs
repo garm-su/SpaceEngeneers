@@ -22,8 +22,6 @@ using VRage.Game.ModAPI.Ingame.Utilities;
 namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
 { //@remove
 
-
-
     public class Program : GridStatusInfo.Program //@remove
     { //@remove
 
@@ -50,7 +48,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
         public string lcdInventoryInfo(Dictionary<string, int> items, int strsize, string subtype)
         {
             List<string> result = new List<string>();
-            
+
             if (items.Count == 0) return "[Empty]";
 
             foreach (var i in items)
@@ -60,7 +58,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
                 //todo: map objectName to readable names                
                 //todo: if (strsize - objectName.Length - 1 < 0)
                 int tLen = strsize - objectName.Length - 1;
-                switch(subtype)
+                switch (subtype)
                 {
                     case "Ore":
                         if (objectType.Contains("_Ore"))
@@ -74,7 +72,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
                             result.Add(objectName + " ingots:" + number(i.Value, tLen - 7));
                         }
                         break;
-                    
+
                     case "Components":
                         if (objectType.Contains("_Component"))
                         {
@@ -143,24 +141,24 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
 
         public string lcdDamageInfo(int strsize)
         {
-            string result = "";       
+            string result = "";
             //todo: add info about damaged armor    
-            if(gridDamagedBlocks.Count() == 0 && gridDestroyedBlocks.Count() == 0)
+            if (gridDamagedBlocks.Count() == 0 && gridDestroyedBlocks.Count() == 0)
             {
                 return "No damage";
             }
             else
             {
                 bool flag = false;
-                if(gridDamagedBlocks.Count() != 0)
+                if (gridDamagedBlocks.Count() != 0)
                 {
                     result = "Damaged\n" + string.Join("\n", gridDamagedBlocks);
                     flag = true;
                 }
-                if(gridDestroyedBlocks.Count() != 0)
+                if (gridDestroyedBlocks.Count() != 0)
                 {
                     if (flag) result += "\n";
-                    result = result + "Destroyed\n"+ string.Join("\n", gridDestroyedBlocks);
+                    result = result + "Destroyed\n" + string.Join("\n", gridDestroyedBlocks);
                 }
             }
             return result;
@@ -179,7 +177,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
 
         public void lcdDrawSpriteText(IMyTextSurface s, string text, Color textColor, float textSize)
         {
-            Vector2 surfaceSize = s.TextureSize;            
+            Vector2 surfaceSize = s.TextureSize;
             string textFont = "Debug";
             List<string> strList = new List<string>();
             strList = text.Split('\n').ToList();
@@ -187,9 +185,9 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
             float offsetH = 10f;
             using (var frame = s.DrawFrame())
             {
-                foreach(var e in strList)
+                foreach (var e in strList)
                 {
-                    if(e == "---")
+                    if (e == "---")
                     {
                         frame.Add(new MySprite(SpriteType.TEXTURE, "SquareSimple", new Vector2(0f, strN * 30f * textSize + offsetH), new Vector2(s.TextureSize.X, 1f), textColor, null, TextAlignment.LEFT, 0f));
                         offsetH += 10f;
@@ -200,7 +198,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
                         var sprite = MySprite.CreateText(tmp.First(), textFont, textColor, textSize, TextAlignment.LEFT);
                         sprite.Position = new Vector2(10f, strN * 30f * textSize + offsetH);
                         frame.Add(sprite);
-                        if(tmp.Count() > 1)
+                        if (tmp.Count() > 1)
                         {
                             sprite = MySprite.CreateText(tmp.Last(), textFont, new Color(200, 200, 200), textSize, TextAlignment.RIGHT);
                             sprite.Position = new Vector2(surfaceSize.X - 20f, strN * 30f * textSize + offsetH);
@@ -212,121 +210,151 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
                 }
             }
         }
-        public void lcdDraw(string infoTag, string statusTag)
+
+        public void surfaceDraw(String CustomName, IMyTextSurface surface, MyIniValue conf)
         {
-            var info_displays = new List<IMyTextPanel>();
-            // var ini = new MyIni();
-            var status_displays = new List<IMyTextPanel>();
-            bool isSprite = false;
+            if (conf.IsEmpty) return;
 
-            reScanObjectGroupLocal(status_displays, statusTag);
-            reScanObjectGroupLocal(info_displays, infoTag);
-            // reScanObjectGroupLocal(displays, GridTag, display => !MyIni.HasSection(display.CustomData, ConfSection));
-
-            var items = gridInventory;
-            // string statusMessage = getStatus(); todo move to main here use only value
-            // status_displays.ForEach(display => display.WriteText(statusMessage));
-
-
-            foreach (var display in info_displays)
+            var result = new List<string>();
+            var letters = (int)(surface.SurfaceSize.X * (100.0 - 2.0 * surface.TextPadding) / 100.0 / surface.MeasureStringInPixels(new StringBuilder("X"), surface.Font, surface.FontSize).X);
+            var commands = conf.ToString().Split(',');
+            var isSprite = (commands[0] == "Sprite");
+            foreach (var command in commands)
             {
-                var result = new List<string>();
-                var letters = (int)(display.SurfaceSize.X * (100.0 - 2.0 * display.TextPadding) / 100.0 / display.MeasureStringInPixels(new StringBuilder("X"), display.Font, display.FontSize).X);
-                var commands = display.CustomData.Split('\n');
-                isSprite = (commands[0] == "Sprite");
-                foreach (var command in commands)
+                if (!isSprite)
                 {
-                    if(!isSprite)
-                    {
-                        display.ContentType = ContentType.TEXT_AND_IMAGE;
-                        display.Font = _lcdFont;
-                        //display.FontColor = mainColor;
-                    }
-                    else
-                    {
-                        initDrawSurface(display);
-                        display.ScriptBackgroundColor = new Color(0,0,0);
-                    }
-
-                    if (command == "") continue;
-                    switch (command)
-                    {
-                        case "Sprite":
-                            break;
-                        case "Battery":
-                            result.Add(lcdBatteryCharge(letters));
-                            break;
-                        case "Fuel":
-                            result.Add(lcdFuelInfo(letters));
-                            break;
-                        case "Damage":
-                            result.Add(lcdDamageInfo(letters));
-                            break;
-                        case "Alerts":
-                            //result += lcdAlerts(letters);
-                            break;
-                        case "Inventory":
-                            result.Add(lcdInventoryInfo(items, letters));
-                            break;
-                        case "AimInfo":
-                            //result += lcdAimModes(letters);
-                            break;
-                        case "Ore":
-                            result.Add(lcdInventoryInfo(items, letters, "Ore"));
-                            break;
-                        case "Ingots":
-                            result.Add(lcdInventoryInfo(items, letters, "Ingots"));
-                            break;
-                        case "Ammo":
-                            result.Add(lcdInventoryInfo(items, letters, "Ammo"));
-                            break;
-                        case "Components":
-                            result.Add(lcdInventoryInfo(items, letters, "Components"));
-                            break;
-                        case "BaseLoader":
-                            if (BaseStatus.ContainsKey("Loader")) result.Add(BaseStatus["Loader"]);
-                            break;
-                        case "BaseInfo":
-                            if (BaseStatus.ContainsKey("Info")) result.Add(BaseStatus["Info"]);
-                            break;
-                        case "BaseWarn":
-                            if (BaseStatus.ContainsKey("Warn")) result.Add(BaseStatus["Warn"]);
-                            break;
-                        case "BaseAlarm":
-                            if (BaseStatus.ContainsKey("Alarm")) result.Add(BaseStatus["Alarm"]);
-                            break;
-
-                        default:
-                            if (command.Length == 1)
-                            {
-                                if(!isSprite)
-                                {
-                                    result.Add(lcdShowLine(command[0], letters));
-                                }
-                                else
-                                {
-                                    result.Add("---");
-                                }
-                            }
-                            else
-                            {
-                                logger.write("lcd: " + display.CustomName + " wrong conf " + command);
-                            }
-                            break;
-                    }
-                }
-                if(!isSprite)
-                {
-                    display.WriteText(string.Join("\n", result));
+                    surface.ContentType = ContentType.TEXT_AND_IMAGE;
+                    surface.Font = _lcdFont;
+                    //display.FontColor = mainColor; /todo from config
                 }
                 else
                 {
-                    Color tColor = new Color(0, 200, 0);
-                    lcdDrawSpriteText(display, string.Join("\n", result), tColor, 1.5f);
+                    initDrawSurface(surface);
+                    surface.ScriptBackgroundColor = new Color(0, 0, 0);
+                }
+
+                if (command == "") continue;
+                switch (command)
+                {
+                    case "Sprite":
+                        break;
+                    case "Battery":
+                        result.Add(lcdBatteryCharge(letters));
+                        break;
+                    case "Fuel":
+                        result.Add(lcdFuelInfo(letters));
+                        break;
+                    case "Damage":
+                        result.Add(lcdDamageInfo(letters));
+                        break;
+                    case "Alerts":
+                        //result += lcdAlerts(letters);
+                        break;
+                    case "Inventory":
+                        result.Add(lcdInventoryInfo(gridInventory, letters));
+                        break;
+                    case "AimInfo":
+                        //result += lcdAimModes(letters);
+                        break;
+                    case "Ore":
+                        result.Add(lcdInventoryInfo(gridInventory, letters, "Ore"));
+                        break;
+                    case "Ingots":
+                        result.Add(lcdInventoryInfo(gridInventory, letters, "Ingots"));
+                        break;
+                    case "Ammo":
+                        result.Add(lcdInventoryInfo(gridInventory, letters, "Ammo"));
+                        break;
+                    case "Components":
+                        result.Add(lcdInventoryInfo(gridInventory, letters, "Components"));
+                        break;
+                    case "BaseLoader":
+                        if (BaseStatus.ContainsKey("Loader")) result.Add(BaseStatus["Loader"]);
+                        break;
+                    case "BaseInfo":
+                        if (BaseStatus.ContainsKey("Info")) result.Add(BaseStatus["Info"]);
+                        break;
+                    case "BaseWarn":
+                        if (BaseStatus.ContainsKey("Warn")) result.Add(BaseStatus["Warn"]);
+                        break;
+                    case "BaseAlarm":
+                        if (BaseStatus.ContainsKey("Alarm")) result.Add(BaseStatus["Alarm"]);
+                        break;
+
+                    default:
+                        if (command.Length == 1)
+                        {
+                            if (!isSprite)
+                            {
+                                result.Add(lcdShowLine(command[0], letters));
+                            }
+                            else
+                            {
+                                result.Add("---");
+                            }
+                        }
+                        else
+                        {
+                            logger.write("lcd: " + CustomName + " wrong conf " + command);
+                        }
+                        break;
+                }
+            }
+
+            if (isSprite)
+            {
+                Color tColor = new Color(0, 200, 0);
+                lcdDrawSpriteText(surface, string.Join("\n", result), tColor, 1.5f);
+            }
+            else
+            {
+                surface.WriteText(string.Join("\n", result));
+            }
+        }
+        public void lcdDraw()
+        {
+
+            // IMyCockpit x;
+            // IMyTextPanel z;
+            // var a1 = x.SurfaceCount;
+            // var a2 = x.GetSurface(0);
+            // y.
+
+            var info_displays = new List<IMyTextPanel>();
+            var info_cockpits = new List<IMyCockpit>();
+
+            reScanObjectsLocal(info_displays, hasConfSection);
+
+            var ini = new MyIni();
+
+            foreach (var display in info_displays)
+            {
+                if (ini.TryParse(display.CustomData, ConfSection))
+                {
+                    surfaceDraw(display.CustomName, display, ini.Get(ConfSection, "Surface"));
+                }
+                else
+                {
+                    Echo("Can't parse ini on " + display.CustomData);
+                }
+            }
+
+            reScanObjectsLocal(info_cockpits, hasConfSection);
+            foreach (var cockpit in info_cockpits)
+            {
+                if (ini.TryParse(cockpit.CustomData, ConfSection))
+                {
+                    for (var i = 0; i < cockpit.SurfaceCount; i++)
+                    {
+                        surfaceDraw(cockpit.CustomName, cockpit.GetSurface(i), ini.Get(ConfSection, "Surface" + i));
+                    }
+                }
+                else
+                {
+                    Echo("Can't parse ini on " + cockpit.CustomData);
                 }
             }
         }
-
 
     }  //@remove
 }  //@remove

@@ -295,7 +295,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
             //runtime actions
             updateGridInfo();
             checkMaxSpeed();
-            lcdDraw(InfoTag, StatusTag);
+            lcdDraw();
 
             //send
             //statusListener = IGC.RegisterBroadcastListener(statusChannelTag);
