@@ -51,19 +51,27 @@ namespace SpaceEngineers.UWBlockPrograms.Helpers //@remove
 
         public String number(double count, int len = 6)
         {
-            var prefix = "  ";
+            string result = "";
+            int tLen = len - 3;
+            if(tLen < 0)
+            {
+                tLen = 0;
+            }
             if (count >= 1e6)
             {
                 count /= 1e6;
-                prefix = "M";
+                 result = String.Format("{0," + (len - 3) + ":0.0}", count) + "M";
             }
             else if (count >= 1e3)
             {
                 count /= 1e3;
-                prefix = "K";
+                result = String.Format("{0," + (len - 3) + ":0.0}", count) + "K";
             }
-
-            return String.Format("{0," + (len - 3) + ":0.0}", count) + prefix;
+            else
+            {
+                result = String.Format("{0," + (len - 3) + ":0}", count);
+            }
+            return result;
 
         }
     }//@remove

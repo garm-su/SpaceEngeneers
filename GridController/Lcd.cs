@@ -59,39 +59,40 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
                 var objectName = i.Key.Split('.').Last();
                 //todo: map objectName to readable names                
                 //todo: if (strsize - objectName.Length - 1 < 0)
+                int tLen = strsize - objectName.Length - 1;
                 switch(subtype)
                 {
                     case "Ore":
                         if (objectType.Contains("_Ore"))
                         {
-                            result.Add(objectName + ":" + number(i.Value, strsize - objectName.Length - 1));
+                            result.Add(objectName + ":" + number(i.Value, tLen));
                         }
                         break;
                     case "Ingots":
                         if (objectType.Contains("_Ingot"))
                         {
-                            result.Add(objectName + " ingots:" + number(i.Value, strsize - objectName.Length - 8));
+                            result.Add(objectName + " ingots:" + number(i.Value, tLen - 7));
                         }
                         break;
                     
                     case "Components":
                         if (objectType.Contains("_Component"))
                         {
-                            result.Add(objectName + ":" + number(i.Value, strsize - objectName.Length - 1));
+                            result.Add(objectName + ":" + number(i.Value, tLen));
                         }
                         break;
 
                     case "Ammo":
                         if (objectType.Contains("_AmmoMagazine"))
                         {
-                            result.Add(objectName + ":" + number(i.Value, strsize - objectName.Length - 1));
+                            result.Add(objectName + ":" + number(i.Value, tLen));
                         }
                         break;
 
                     case "Equip":
                         if (objectType.Contains("_PhysicalGunObject") || objectType.Contains("_ConsumableItem") || (objectType.Contains("ContainerObject")))
                         {
-                            result.Add(objectName + ":" + number(i.Value, strsize - objectName.Length - 1));
+                            result.Add(objectName + ":" + number(i.Value, tLen));
                         }
                         break;
                     default:
@@ -113,12 +114,12 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
                 int chargeLen = (int)((strsize - 12) * gridCharge);
                 string result = new string('█', chargeLen);
                 string spacer = new string(' ', strsize - chargeLen - 12);
-                result = "Battery:" + result + spacer + Math.Round(gridCharge * 100).ToString() + "%";
+                result = "Battery " + result + spacer + Math.Round(gridCharge * 100).ToString() + "%";
                 return result;
             }
             else
             {
-                string result = "Battery:" + Math.Round(gridCharge * 100).ToString() + "%";
+                string result = "Battery " + Math.Round(gridCharge * 100).ToString() + "%";
                 return result;
             }
         }
@@ -144,19 +145,22 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
         {
             string result = "";       
             //todo: add info about damaged armor    
-            if(gridDamagedBlocks.Count() == 0 || gridDestroyedBlocks.Count() == 0)
+            if(gridDamagedBlocks.Count() == 0 && gridDestroyedBlocks.Count() == 0)
             {
-                return "No damaged blocks detected";
+                return "No damage";
             }
             else
             {
+                bool flag = false;
                 if(gridDamagedBlocks.Count() != 0)
                 {
-                    result = "Damaged blocks:\n" + string.Join("\n", gridDamagedBlocks);
+                    result = "Damaged\n" + string.Join("\n", gridDamagedBlocks);
+                    flag = true;
                 }
-                if(gridDestroyedBlocks.Count() != 0 )
+                if(gridDestroyedBlocks.Count() != 0)
                 {
-                    result = result + "\nDestroyed blocks:\n"+ string.Join("\n", gridDestroyedBlocks);
+                    if (flag) result += "\n";
+                    result = result + "Destroyed\n"+ string.Join("\n", gridDestroyedBlocks);
                 }
             }
             return result;
@@ -172,25 +176,48 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
             s.ContentType = ContentType.SCRIPT;
             s.Script = "";
         }
-        public void lcdDrawSpriteText(IMyTextSurface s, string text, Color textColor, TextAlignment align)
-        {
-            initDrawSurface(s);
-//        Vector2 surfaceSize = surf.TextureSize;            
-//        Vector2 screenCenter = surfaceSize * 0.5f;
-            float textSize = 1.5f;
 
+        public void lcdDrawSpriteText(IMyTextSurface s, string text, Color textColor, float textSize)
+        {
+            Vector2 surfaceSize = s.TextureSize;            
+            string textFont = "Debug";
+            List<string> strList = new List<string>();
+            strList = text.Split('\n').ToList();
+            float strN = 0f;
+            float offsetH = 10f;
             using (var frame = s.DrawFrame())
             {
-                var sprite = MySprite.CreateText(text, "Debug", textColor, textSize, TextAlignment.CENTER);
-                //text.Position = textPos;
-                frame.Add(sprite);
+                foreach(var e in strList)
+                {
+                    if(e == "---")
+                    {
+                        frame.Add(new MySprite(SpriteType.TEXTURE, "SquareSimple", new Vector2(0f, strN * 30f * textSize + offsetH), new Vector2(s.TextureSize.X, 1f), textColor, null, TextAlignment.LEFT, 0f));
+                        offsetH += 10f;
+                    }
+                    else
+                    {
+                        List<string> tmp = e.Split(':').ToList();
+                        var sprite = MySprite.CreateText(tmp.First(), textFont, textColor, textSize, TextAlignment.LEFT);
+                        sprite.Position = new Vector2(10f, strN * 30f * textSize + offsetH);
+                        frame.Add(sprite);
+                        if(tmp.Count() > 1)
+                        {
+                            sprite = MySprite.CreateText(tmp.Last(), textFont, new Color(200, 200, 200), textSize, TextAlignment.RIGHT);
+                            sprite.Position = new Vector2(surfaceSize.X - 20f, strN * 30f * textSize + offsetH);
+                            frame.Add(sprite);
+                        }
+                        strN += 1f;
+
+                    }
+                }
             }
         }
-        public void lcdDraw(string infoTag, string statusTag, bool isSprite = false)
+        public void lcdDraw(string infoTag, string statusTag)
         {
             var info_displays = new List<IMyTextPanel>();
             // var ini = new MyIni();
             var status_displays = new List<IMyTextPanel>();
+            bool isSprite = false;
 
             reScanObjectGroupLocal(status_displays, statusTag);
             reScanObjectGroupLocal(info_displays, infoTag);
@@ -205,16 +232,27 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
             {
                 var result = new List<string>();
                 var letters = (int)(display.SurfaceSize.X * (100.0 - 2.0 * display.TextPadding) / 100.0 / display.MeasureStringInPixels(new StringBuilder("X"), display.Font, display.FontSize).X);
-
-                foreach (var command in display.CustomData.Split('\n'))
+                var commands = display.CustomData.Split('\n');
+                isSprite = (commands[0] == "Sprite");
+                foreach (var command in commands)
                 {
-                    display.ContentType = ContentType.TEXT_AND_IMAGE;
-                    display.Font = _lcdFont;
-                    //display.FontColor = mainColor;
+                    if(!isSprite)
+                    {
+                        display.ContentType = ContentType.TEXT_AND_IMAGE;
+                        display.Font = _lcdFont;
+                        //display.FontColor = mainColor;
+                    }
+                    else
+                    {
+                        initDrawSurface(display);
+                        display.ScriptBackgroundColor = new Color(0,0,0);
+                    }
 
                     if (command == "") continue;
                     switch (command)
                     {
+                        case "Sprite":
+                            break;
                         case "Battery":
                             result.Add(lcdBatteryCharge(letters));
                             break;
@@ -261,13 +299,13 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
                         default:
                             if (command.Length == 1)
                             {
-                                if (isSprite)
+                                if(!isSprite)
                                 {
-                                    result.Add("---");
+                                    result.Add(lcdShowLine(command[0], letters));
                                 }
                                 else
                                 {
-                                    result.Add(lcdShowLine(command[0], letters));
+                                    result.Add("---");
                                 }
                             }
                             else
@@ -277,23 +315,14 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
                             break;
                     }
                 }
-                if (isSprite)
+                if(!isSprite)
                 {
-                    foreach(var elem in result)
-                    {
-                        if(elem != "---")
-                        {
-                            //lcdDrawSpriteText();
-                        }
-                        else
-                        {
-                            //draw line
-                        }
-                    }
+                    display.WriteText(string.Join("\n", result));
                 }
                 else
                 {
-                    display.WriteText(string.Join("\n", result));
+                    Color tColor = new Color(0, 200, 0);
+                    lcdDrawSpriteText(display, string.Join("\n", result), tColor, 1.5f);
                 }
             }
         }
