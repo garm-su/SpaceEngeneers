@@ -31,20 +31,21 @@ public void reScanObjects<T>(List<T> result, Func<IMyTerminalBlock, bool> check)
 	GridTerminalSystem.GetBlocksOfType<T>(result, check);
 }
 
-private string getName(MyItemType type)
-{
-	return type.TypeId + '.' + type.SubtypeId;
-}
-
-public Program(){
-	// Set the script to run every 100 ticks, so no timer needed.
-	Runtime.UpdateFrequency = UpdateFrequency.Update10;
-}
-
 void initDrawSurface(IMyTextSurface s)
 {
 	s.ContentType = ContentType.SCRIPT;
 	s.Script = "";
+}
+
+public string getName(MyItemType type)
+{
+	return type.TypeId + '.' + type.SubtypeId;
+}
+
+public Program()
+{
+	// Set the script to run every 100 ticks, so no timer needed.
+	Runtime.UpdateFrequency = UpdateFrequency.Update10;
 }
 
 //MySpriteDrawFrame
@@ -59,26 +60,163 @@ void initDrawSurface(IMyTextSurface s)
 //IMyTextSurfaceProvider
 //https://github.com/malware-dev/MDK-SE/wiki/Sandbox.ModAPI.Ingame.IMyTextSurfaceProvider
 
+public class gridPosition
+{
+    public bool isEnemy;
+    public Vector3D position;
+    public int type; //0 - static, 1 - large, 2 - small and characters
+
+    public gridPosition(double x, double y, double z, bool enemyFlag, string gridType)
+    {
+        position = new Vector3D(x,y,z);
+        isEnemy = enemyFlag;
+        if(gridType.Contains("Static"))
+        {
+            type = 0;
+        }
+        else if(gridType.Contains("Large"))
+        {
+            type = 1;
+        }
+        else
+        {
+            type = 2;
+        }
+    }
+
+    public void drawGrid2D(MySpriteDrawFrame frame, float maxRange, Vector2 surfaceSize, gridPosition myGrid)
+    {
+        Color baseColor = new Color(0, 0, 200);
+        Color borderColor = new Color(0, 0, 100);
+        var rPos = myGrid.position - position;
+        double spriteX = rPos.X*(surfaceSize.X/maxRange);
+        double spriteY = rPos.Y*(surfaceSize.Y/maxRange);
+        double spriteZ = rPos.X*(surfaceSize.X/maxRange);
+
+        if (isEnemy)
+        {
+            baseColor = new Color(200, 0, 0);
+            borderColor = new Color(100, 0, 0);
+        }
+
+        if (rPos.Length() <= maxRange)
+        {
+            switch (type)
+            {
+                case 0: //square
+                    frame.Add(new MySprite(SpriteType.TEXTURE, "SquareSimple", new Vector2((float)spriteX, (float)spriteY), new Vector2(10f, 10f), borderColor, null, TextAlignment.CENTER, 0f));
+                    frame.Add(new MySprite(SpriteType.TEXTURE, "SquareSimple", new Vector2((float)spriteX, (float)spriteY), new Vector2(9f, 9f), baseColor, null, TextAlignment.CENTER, 0f));
+                    break;
+                case 1: //triangle
+
+                    break;
+                case 2: //circle
+                    frame.Add(new MySprite(SpriteType.TEXTURE, "Circle", new Vector2((float)spriteX, (float)spriteY), new Vector2(10f, 10f), borderColor, null, TextAlignment.CENTER, 0f));
+                    frame.Add(new MySprite(SpriteType.TEXTURE, "Circle", new Vector2((float)spriteX, (float)spriteY), new Vector2(9f, 9f), baseColor, null, TextAlignment.CENTER, 0f));
+                    break;
+            }
+        }
+        else
+        {
+            //todo - bordermarker?
+        }
+    }
+}
+/*
+void drawMapBorder(MySpriteDrawFrame frame, double maxRange, Vector2 surfaceSize)
+{
+
+}
+
+void drawMapText(MySpriteDrawFrame frame, double maxRange, Vector2 surfaceSize, List<string> mapOptions = null)
+{
+
+}
+
+void drawMap()
+{
+}
+
+void mapScaleUp() //+1km
+{
+
+}
+
+void mapScaleDown() //-1km
+{
+
+}
+*/
+
+void func()
+{
+
+}
+
+List<gridPosition> parseGridPositions(string positionsList, bool isEnemy)
+{
+    List<gridPosition> result = new List<gridPosition>();
+    JsonList jsonData;
+    try
+    {
+        jsonData = (new JSON(positionsList)).Parse() as JsonList;
+    }
+    catch (Exception e) // in case something went wrong (either your json is wrong or my library has a bug :P)
+    {
+        Echo("There's somethign wrong with your json: " + e.Message);
+        return null;
+    }
+    foreach(var elem in jsonData)
+    {
+        //result.Add(new gridPosition(double.Parse((JsonPrimitive)e["X"]), double.Parse((JsonPrimitive)e["Y"]), double.Parse((JsonPrimitive)e["Z"]), isEnemy, "Small"));
+        Echo(elem.ToString());
+    }
+    return result;
+}
+
 public void Main(string arg)
 {
 	List<IMyTextPanel> displays = new List<IMyTextPanel> ();
+	List<IMyTextPanel> maps = new List<IMyTextPanel> ();
 	reScanObjectGroupLocal(displays, "[DRAW]");
+	reScanObjectGroupLocal(maps, "[MAP]");
+    Vector3D myPosition = Me.GetPosition();
+    double maxRange = 1000;
 	int c = 0;
+    List<gridPosition> allyGrids = new List<gridPosition>();
+    gridPosition myGrid = new gridPosition(myPosition.X, myPosition.Y, myPosition.Z, false, "Small");
+
+
+    if (maps.Count() == 0)
+    {
+        Echo("No map data detected");
+        return;
+    }
+    
 	foreach(var elem in displays)
 	{	
-		Vector2 tst = new Vector2(0f, 0f);
+		initDrawSurface(elem);
+        using (var frame = elem.DrawFrame())
+        {
+            var allyGrid = parseGridPositions(maps[0].GetText(), false);
+            foreach(var ally in allyGrids)
+            {
+                ally.drawGrid2D(frame, (float)maxRange, elem.SurfaceSize, myGrid);
+            }
+        }
+
+	/*	Vector2 tst = new Vector2(0f, 0f);
 		IMyTextSurface d = elem as IMyTextSurface;
-		initDrawSurface(d);
         using (var frame = d.DrawFrame())
         {
-            var text = "No damage detected dummy";
+            var text = "No damage ";
 			var sprite = MySprite.CreateText(text, "Debug", new Color(255,150,0), 1.5f, TextAlignment.LEFT);
 			sprite.Position = new Vector2(10f,10f);
             frame.Add(sprite);
             frame.Add(new MySprite(SpriteType.TEXTURE, "SquareSimple", new Vector2(0f, 20f), new Vector2(512f, 1f), new Color(255,150,0), "test", TextAlignment.CENTER, 0f));
-		}		
-		Echo(d.TextureSize.ToString());
-		Echo(d.SurfaceSize.ToString());
+		}*/
+
+		Echo(elem.SurfaceSize.ToString());
 		c += 1;
 	}
 	Echo("displays:" + c.ToString());
