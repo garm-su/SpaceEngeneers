@@ -77,6 +77,8 @@
   <ItemGroup>
     <Compile Include="Program.cs" />
     
+    <Compile Include="Aligner.cs" />
+    
     <Compile Include="Checker.cs" />
 
     <Compile Include="Libraries/json.cs" />
