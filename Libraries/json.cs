@@ -420,11 +420,13 @@ public class JSON
         //Func<object, JsonObject> Generator = JsonObject.NewJsonObject("", readOnly);
         var trimChars = new char[] { '"', '\'', ' ', '\n', '\r', '\t', '\f' };
         string Key = "";
+        bool endOf = false;
         var keyDelims = new char[] { '}', ':' };
         var valueDelims = new char[] { '{', '}', ',', '[', ']' };
         var expectedDelims = valueDelims;
         var charIndex = -1;
         bool isInsideList = false;
+
 
         while (LastCharIndex < Serialized.Length - 1)
         {
@@ -441,7 +443,8 @@ public class JSON
                 {
                     case '[':
                         CurrentNestedJsonObject = new JsonList(Key);
-                        JsonStack.Peek().Add(CurrentNestedJsonObject as JsonElement);
+                        if (JsonStack.Count > 0)
+                            JsonStack.Peek().Add(CurrentNestedJsonObject as JsonElement);
                         JsonStack.Push(CurrentNestedJsonObject);
                         //Console.WriteLine("List started");
                         break;
@@ -457,9 +460,12 @@ public class JSON
                     case ',':
                     case '}':
                     case ']':
-                        var value = Serialized.Substring(LastCharIndex + 1, charIndex - LastCharIndex - 1).Trim(trimChars);
-                        //Console.WriteLine("value is: '" + value + "'");
-                        JsonStack.Peek().Add(new JsonPrimitive(Key, value));
+                        if (!endOf)
+                        {
+                            var value = Serialized.Substring(LastCharIndex + 1, charIndex - LastCharIndex - 1).Trim(trimChars);
+                            //Console.WriteLine("value is: '" + value + "'");
+                            JsonStack.Peek().Add(new JsonPrimitive(Key, value));
+                        }
                         if (foundChar == '}' || foundChar == ']')
                         {
                             /*if (foundChar == ']')
@@ -489,9 +495,11 @@ public class JSON
                     Expected = JSONPart.KEY;
                     expectedDelims = keyDelims;
                 }
+                endOf = false;
             }
             else if (Expected == JSONPart.KEY)
             {
+                endOf = false;
                 //Console.WriteLine("Expecting Key...");
                 //Console.WriteLine("Found " + Serialized[charIndex] + " (" + charIndex + ")");
 
@@ -509,6 +517,14 @@ public class JSON
                         if (charIndex < Serialized.Length - 1 && Serialized[charIndex + 1] == ',')
                             charIndex++;
                         LastNestedJsonObject = JsonStack.Pop();
+                        isInsideList = JsonStack.Count == 0 || JsonStack.Peek() is JsonList;
+                        if (isInsideList)
+                        {
+                            Key = null;
+                            endOf = true;
+                            Expected = JSONPart.VALUE;
+                            expectedDelims = valueDelims;
+                        }
                         break;
                     default:
                         //Console.WriteLine($"Invalid character found: '{Serialized[charIndex]}', expected ':'!");
