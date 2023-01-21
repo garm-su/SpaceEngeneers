@@ -88,7 +88,10 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
         Messaging Alarms;
 
         List<FactoryController> factories = new List<FactoryController> {
-           new FactoryController("Factory Small Projector", "LCD Factory")
+           new FactoryController("Factory Small Projector", "LCD Factory"),
+           new FactoryController("Factory Large Projector", "Factory Large LCD"),
+           new FactoryController("BF Small Projector", "BF Small LCD"),
+           new FactoryController("BF Big Projector", "BF Big LCD")
         };
 
         Dictionary<String, List<IMyAssembler>> assemblersInUse = new Dictionary<String, List<IMyAssembler>>();
