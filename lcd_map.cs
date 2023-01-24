@@ -63,11 +63,13 @@ public Program()
 public class gridPosition
 {
     public bool isEnemy;
+    public string gridName;
     public Vector3D position;
     public int type; //0 - static, 1 - large, 2 - small and characters
 
-    public gridPosition(double x, double y, double z, bool enemyFlag, string gridType)
+    public gridPosition(double x, double y, double z, bool enemyFlag, string gridType, string name = "")
     {
+        gridName = name;
         position = new Vector3D(x,y,z);
         isEnemy = enemyFlag;
         if(gridType.Contains("Static"))
@@ -83,22 +85,22 @@ public class gridPosition
             type = 2;
         }
     }
-
-    public void drawGrid2D(MySpriteDrawFrame frame, float maxRange, Vector2 surfaceSize, gridPosition myGrid)
+    public override string ToString()
     {
-        Color baseColor = new Color(0, 0, 200);
-        Color borderColor = new Color(0, 0, 100);
-        var rPos = myGrid.position - position;
-        double spriteX = rPos.X*(surfaceSize.X/maxRange);
-        double spriteY = rPos.Y*(surfaceSize.Y/maxRange);
-        double spriteZ = rPos.X*(surfaceSize.X/maxRange);
+        return gridName + ":" + position.ToString();
+    }
 
-        if (isEnemy)
-        {
-            baseColor = new Color(200, 0, 0);
-            borderColor = new Color(100, 0, 0);
-        }
-
+    public string drawGrid2D(MySpriteDrawFrame frame, float maxRange, Vector2 surfaceSize, gridPosition myGrid, Vector3D orientation, Color baseColor, Color borderColor)
+    {
+        var rPos = position - myGrid.position;
+        string result = "";
+        double baseX = rPos.X;//*(surfaceSize.X/(2*maxRange)) + surfaceSize.X/2;
+        double baseY = rPos.Y;//*(surfaceSize.Y/(2*maxRange)) + surfaceSize.Y/2;
+        double baseZ = rPos.X;//*(surfaceSize.X/(2*maxRange)) + surfaceSize.X/2;
+        double angle = orientation.Dot(new Vector3D(0,1,0));
+        double spriteX = (baseX*angle - baseY*(1 - angle))*(surfaceSize.X/(2*maxRange)) + surfaceSize.X/2;
+        double spriteY = (baseY*angle + baseX*(1-angle))*(surfaceSize.Y/(2*maxRange)) + surfaceSize.Y/2;
+        result = angle.ToString() + " *** X:" + spriteX.ToString() + " Y:" + spriteY.ToString();
         if (rPos.Length() <= maxRange)
         {
             switch (type)
@@ -120,6 +122,7 @@ public class gridPosition
         {
             //todo - bordermarker?
         }
+        return result;
     }
 }
 /*
@@ -132,11 +135,65 @@ void drawMapText(MySpriteDrawFrame frame, double maxRange, Vector2 surfaceSize, 
 {
 
 }
+*/
 
-void drawMap()
+void func()
 {
+
 }
 
+void drawMap(double maxRange)
+{
+	List<IMyTextPanel> displays = new List<IMyTextPanel> ();
+	List<IMyTextPanel> maps = new List<IMyTextPanel> ();
+    List<IMyShipController> controls = new List<IMyShipController> ();
+    Vector3D o = new Vector3D(0f,1f,0f);
+	reScanObjectGroupLocal(displays, "[DRAW]");
+	reScanObjectGroupLocal(maps, "[MAP]");
+    reScanObjects(controls);
+    Vector3D myPosition = Me.GetPosition();
+    List<gridPosition> allyGrids = new List<gridPosition>();
+    gridPosition myGrid = new gridPosition(myPosition.X, myPosition.Y, myPosition.Z, false, "Small");
+    IMyTerminalBlock refBlock = Me;
+
+    Echo(controls.Count().ToString());
+    if (controls.Count() > 0)
+    {
+        refBlock = (IMyTerminalBlock)controls[0];
+        foreach(var control in controls)
+        {
+            if (control.IsUnderControl)
+            {
+                refBlock = (IMyTerminalBlock)control;
+            }
+        }
+    }
+
+    o = Base6Directions.GetVector(refBlock.Orientation.Forward);
+    o.Normalize();
+    Vector3D transformedOrientation = Vector3D.TransformNormal(o, refBlock.WorldMatrix);
+
+    if (maps.Count() == 0)
+    {
+        Echo("No map data detected");
+        return;
+    }
+    
+	foreach(var elem in displays)
+	{
+		initDrawSurface(elem);
+        using (var frame = elem.DrawFrame())
+        {
+            allyGrids = parseGridPositions(maps[0].GetText(), false);
+            foreach(var ally in allyGrids)
+            {
+                Echo(ally.drawGrid2D(frame, (float)maxRange, elem.SurfaceSize, myGrid, transformedOrientation, new Color(0,200,0), new Color(0,50,0)));
+            }
+            Echo(myGrid.drawGrid2D(frame, (float)maxRange, elem.SurfaceSize, myGrid, transformedOrientation, new Color(0,0,200), new Color(0,0,50)));
+        }
+    }
+}
+/*
 void mapScaleUp() //+1km
 {
 
@@ -147,11 +204,6 @@ void mapScaleDown() //-1km
 
 }
 */
-
-void func()
-{
-
-}
 
 List<gridPosition> parseGridPositions(string positionsList, bool isEnemy)
 {
@@ -166,45 +218,20 @@ List<gridPosition> parseGridPositions(string positionsList, bool isEnemy)
         Echo("There's somethign wrong with your json: " + e.Message);
         return null;
     }
+
     foreach(var elem in jsonData)
     {
-        //result.Add(new gridPosition(double.Parse((JsonPrimitive)e["X"]), double.Parse((JsonPrimitive)e["Y"]), double.Parse((JsonPrimitive)e["Z"]), isEnemy, "Small"));
-        Echo(elem.ToString());
+        JsonObject temp;
+        temp = (JsonObject)elem; 
+        var jsonPosition = ((JsonObject)temp["Position"]);
+        result.Add(new gridPosition(((JsonPrimitive)jsonPosition["X"]).GetValue<double>(), ((JsonPrimitive)jsonPosition["Y"]).GetValue<double>(), ((JsonPrimitive)jsonPosition["Z"]).GetValue<double>(), isEnemy, "Small"));
     }
     return result;
 }
 
 public void Main(string arg)
 {
-	List<IMyTextPanel> displays = new List<IMyTextPanel> ();
-	List<IMyTextPanel> maps = new List<IMyTextPanel> ();
-	reScanObjectGroupLocal(displays, "[DRAW]");
-	reScanObjectGroupLocal(maps, "[MAP]");
-    Vector3D myPosition = Me.GetPosition();
-    double maxRange = 1000;
-	int c = 0;
-    List<gridPosition> allyGrids = new List<gridPosition>();
-    gridPosition myGrid = new gridPosition(myPosition.X, myPosition.Y, myPosition.Z, false, "Small");
-
-
-    if (maps.Count() == 0)
-    {
-        Echo("No map data detected");
-        return;
-    }
-    
-	foreach(var elem in displays)
-	{	
-		initDrawSurface(elem);
-        using (var frame = elem.DrawFrame())
-        {
-            var allyGrid = parseGridPositions(maps[0].GetText(), false);
-            foreach(var ally in allyGrids)
-            {
-                ally.drawGrid2D(frame, (float)maxRange, elem.SurfaceSize, myGrid);
-            }
-        }
-
+    drawMap(1000);
 	/*	Vector2 tst = new Vector2(0f, 0f);
 		IMyTextSurface d = elem as IMyTextSurface;
         using (var frame = d.DrawFrame())
@@ -215,13 +242,7 @@ public void Main(string arg)
             frame.Add(sprite);
             frame.Add(new MySprite(SpriteType.TEXTURE, "SquareSimple", new Vector2(0f, 20f), new Vector2(512f, 1f), new Color(255,150,0), "test", TextAlignment.CENTER, 0f));
 		}*/
-
-		Echo(elem.SurfaceSize.ToString());
-		c += 1;
-	}
-	Echo("displays:" + c.ToString());
 }
-
 interface IJsonNonPrimitive
 {
     void Add(JsonElement child);
@@ -633,13 +654,16 @@ public class JSON
         Stack<IJsonNonPrimitive> JsonStack = new Stack<IJsonNonPrimitive>();
         IJsonNonPrimitive CurrentNestedJsonObject = null;
         IJsonNonPrimitive LastNestedJsonObject = null;
+        //Func<object, JsonObject> Generator = JsonObject.NewJsonObject("", readOnly);
         var trimChars = new char[] { '"', '\'', ' ', '\n', '\r', '\t', '\f' };
         string Key = "";
+        bool endOf = false;
         var keyDelims = new char[] { '}', ':' };
         var valueDelims = new char[] { '{', '}', ',', '[', ']' };
         var expectedDelims = valueDelims;
         var charIndex = -1;
         bool isInsideList = false;
+
 
         while (LastCharIndex < Serialized.Length - 1)
         {
@@ -650,14 +674,19 @@ public class JSON
             char foundChar = Serialized[charIndex];
             if (Expected == JSONPart.VALUE)
             {
+                //Console.WriteLine("Expecting Value...");
+                //Console.WriteLine("Found " + Serialized[charIndex] + " (" + charIndex + ")");
                 switch (foundChar)
                 {
                     case '[':
                         CurrentNestedJsonObject = new JsonList(Key);
-                        JsonStack.Peek().Add(CurrentNestedJsonObject as JsonElement);
+                        if (JsonStack.Count > 0)
+                            JsonStack.Peek().Add(CurrentNestedJsonObject as JsonElement);
                         JsonStack.Push(CurrentNestedJsonObject);
+                        //Console.WriteLine("List started");
                         break;
                     case '{':
+                        //Console.WriteLine("Found new JsonObject");
                         CurrentNestedJsonObject = new JsonObject(Key);
                         if (JsonStack.Count > 0)
                             JsonStack.Peek().Add(CurrentNestedJsonObject as JsonElement);
@@ -668,8 +697,12 @@ public class JSON
                     case ',':
                     case '}':
                     case ']':
-                        var value = Serialized.Substring(LastCharIndex + 1, charIndex - LastCharIndex - 1).Trim(trimChars);
-                        JsonStack.Peek().Add(new JsonPrimitive(Key, value));
+                        if (!endOf)
+                        {
+                            var value = Serialized.Substring(LastCharIndex + 1, charIndex - LastCharIndex - 1).Trim(trimChars);
+                            //Console.WriteLine("value is: '" + value + "'");
+                            JsonStack.Peek().Add(new JsonPrimitive(Key, value));
+                        }
                         if (foundChar == '}' || foundChar == ']')
                         {
                             /*if (foundChar == ']')
@@ -699,23 +732,39 @@ public class JSON
                     Expected = JSONPart.KEY;
                     expectedDelims = keyDelims;
                 }
+                endOf = false;
             }
             else if (Expected == JSONPart.KEY)
             {
+                endOf = false;
+                //Console.WriteLine("Expecting Key...");
+                //Console.WriteLine("Found " + Serialized[charIndex] + " (" + charIndex + ")");
 
                 switch (Serialized[charIndex])
                 {
                     case ':':
                         Key = Serialized.Substring(LastCharIndex + 1, charIndex - LastCharIndex - 1).Trim(trimChars);
+                        //Console.WriteLine("key is: '" + Key + "'");
+                        //Generator = JsonObject.NewJsonObject(Key, readOnly);
                         Expected = JSONPart.VALUE;
                         expectedDelims = valueDelims;
                         break;
                     case '}':
+                        //Console.WriteLine("Leaving JsonObject...");
                         if (charIndex < Serialized.Length - 1 && Serialized[charIndex + 1] == ',')
                             charIndex++;
                         LastNestedJsonObject = JsonStack.Pop();
+                        isInsideList = JsonStack.Count == 0 || JsonStack.Peek() is JsonList;
+                        if (isInsideList)
+                        {
+                            Key = null;
+                            endOf = true;
+                            Expected = JSONPart.VALUE;
+                            expectedDelims = valueDelims;
+                        }
                         break;
                     default:
+                        //Console.WriteLine($"Invalid character found: '{Serialized[charIndex]}', expected ':'!");
                         break;
                 }
             }
