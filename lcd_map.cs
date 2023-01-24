@@ -44,7 +44,7 @@ public string getName(MyItemType type)
 
 public Program()
 {
-	// Set the script to run every 100 ticks, so no timer needed.
+	// Set the script to run every 10 ticks, so no timer needed.
 	Runtime.UpdateFrequency = UpdateFrequency.Update10;
 }
 
@@ -56,8 +56,6 @@ public Program()
 //frame.Add(new MySprite.CreateText("Test", "Debug", new Color(1f), 2f, TextAlignment.CENTER)); //text
 //https://forum.keenswh.com/threads/api-or-example-script-for-the-new-lcd.7402966/
 //steamapps\common\SpaceEngineers\Content\Textures\Sprites\
-//IMyCockpit
-//IMyTextSurfaceProvider
 //https://github.com/malware-dev/MDK-SE/wiki/Sandbox.ModAPI.Ingame.IMyTextSurfaceProvider
 
 public class gridPosition
@@ -90,18 +88,26 @@ public class gridPosition
         return gridName + ":" + position.ToString();
     }
 
-    public string drawGrid2D(MySpriteDrawFrame frame, float maxRange, Vector2 surfaceSize, gridPosition myGrid, Vector3D orientation, Color baseColor, Color borderColor)
+    public string drawGrid2D(MySpriteDrawFrame frame, float maxRange, Vector2 surfaceSize, gridPosition myGrid, /*Vector3D orientation*/MatrixD mat, Color baseColor, Color borderColor)
     {
         var rPos = position - myGrid.position;
+        var distance = rPos.Length();
+        var rDir = Vector3D.Normalize(rPos); //world direction to grid from myGrid
         string result = "";
-        double baseX = rPos.X;//*(surfaceSize.X/(2*maxRange)) + surfaceSize.X/2;
-        double baseY = rPos.Y;//*(surfaceSize.Y/(2*maxRange)) + surfaceSize.Y/2;
-        double baseZ = rPos.X;//*(surfaceSize.X/(2*maxRange)) + surfaceSize.X/2;
-        double angle = orientation.Dot(new Vector3D(0,1,0));
-        double spriteX = (baseX*angle - baseY*(1 - angle))*(surfaceSize.X/(2*maxRange)) + surfaceSize.X/2;
-        double spriteY = (baseY*angle + baseX*(1-angle))*(surfaceSize.Y/(2*maxRange)) + surfaceSize.Y/2;
-        result = angle.ToString() + " *** X:" + spriteX.ToString() + " Y:" + spriteY.ToString();
-        if (rPos.Length() <= maxRange)
+
+        //Convert worldDirection into a local direction
+        Vector3D rVector = Vector3D.TransformNormal(rDir, MatrixD.Transpose(mat))*distance; //note that we transpose to go from world -> body
+        if(distance == 0)
+        {
+            rVector = new Vector3D(0f,0f,0f);
+        }
+        double spriteX = rVector.X * (surfaceSize.X/(2*maxRange)) + surfaceSize.X/2;
+        double lineHeight = rVector.Y * (surfaceSize.Y/(2*maxRange));
+        double spriteY = rVector.Z * (surfaceSize.Y/(2*maxRange)) + surfaceSize.Y/2;
+
+        result = "Vector:" + rVector.ToString() + " distance: " + distance.ToString();
+        frame.Add(new MySprite(SpriteType.TEXTURE, "SquareSimple", new Vector2((float)spriteX, (float)spriteY + (float)lineHeight/4), new Vector2(1f, (float)lineHeight/2), new Color(50,50,50), null, TextAlignment.CENTER, 0f));
+        if (distance <= maxRange)
         {
             switch (type)
             {
@@ -110,7 +116,8 @@ public class gridPosition
                     frame.Add(new MySprite(SpriteType.TEXTURE, "SquareSimple", new Vector2((float)spriteX, (float)spriteY), new Vector2(9f, 9f), baseColor, null, TextAlignment.CENTER, 0f));
                     break;
                 case 1: //triangle
-
+                    frame.Add(new MySprite(SpriteType.TEXTURE, "Triangle", new Vector2((float)spriteX, (float)spriteY), new Vector2(10f, 10f), borderColor, null, TextAlignment.CENTER, 0f));
+                    frame.Add(new MySprite(SpriteType.TEXTURE, "Triangle", new Vector2((float)spriteX, (float)spriteY), new Vector2(9f, 9), baseColor, null, TextAlignment.CENTER, 0f));
                     break;
                 case 2: //circle
                     frame.Add(new MySprite(SpriteType.TEXTURE, "Circle", new Vector2((float)spriteX, (float)spriteY), new Vector2(10f, 10f), borderColor, null, TextAlignment.CENTER, 0f));
@@ -120,43 +127,63 @@ public class gridPosition
         }
         else
         {
-            //todo - bordermarker?
+            //todo - bordermarkers for ranged targets?
         }
+
         return result;
     }
 }
-/*
-void drawMapBorder(MySpriteDrawFrame frame, double maxRange, Vector2 surfaceSize)
-{
-
-}
-
-void drawMapText(MySpriteDrawFrame frame, double maxRange, Vector2 surfaceSize, List<string> mapOptions = null)
-{
-
-}
-*/
 
 void func()
 {
 
 }
 
+void drawMapBorder(MySpriteDrawFrame frame, float maxRange, Vector2 surfaceSize, Color baseColor, Color borderColor)
+{
+    int marksCount = (int)Math.Round(maxRange/100);
+    frame.Add(new MySprite(SpriteType.TEXTURE, "SquareSimple", new Vector2(surfaceSize.X/2, surfaceSize.Y/2), new Vector2(surfaceSize.X-10f, surfaceSize.Y-10f), baseColor, null, TextAlignment.CENTER, 0f));
+    frame.Add(new MySprite(SpriteType.TEXTURE, "SquareSimple", new Vector2(surfaceSize.X/2, surfaceSize.Y/2), new Vector2(surfaceSize.X-12f, surfaceSize.Y-12f), new Color(0,0,0), null, TextAlignment.CENTER, 0f));
+    for(var i = 0; i < marksCount; i++)
+    {
+        frame.Add(new MySprite(SpriteType.TEXTURE, "SquareSimple", new Vector2(5f + i*(surfaceSize.X - 10f)/marksCount, surfaceSize.Y/2), new Vector2(1f, surfaceSize.Y), borderColor, null, TextAlignment.CENTER, 0f));
+        frame.Add(new MySprite(SpriteType.TEXTURE, "SquareSimple", new Vector2(surfaceSize.X/2, 5f + i*(surfaceSize.Y - 10f)/marksCount), new Vector2(surfaceSize.X, 1f), borderColor, null, TextAlignment.CENTER, 0f));
+    }
+}
+
+
+/*void drawMapText(MySpriteDrawFrame frame, double maxRange, Vector2 surfaceSize, Color textColor, int enemyCount, int allyCount)
+{
+    var sprite = MySprite.CreateText("Range:" + (int)maxRange.ToString(), "Debug", textColor, 1f, TextAlignment.LEFT);
+    sprite.position = new Vector2();
+    frame.Add(sprite);
+
+    sprite = MySprite.CreateText("Friendly signals:" + allyCount.ToString(), "Debug", textColor, 1f, TextAlignment.LEFT);
+    sprite.position = new Vector2();
+    frame.Add(sprite);    
+
+    sprite = MySprite.CreateText("Enemy signals:" + enemyCount.ToString(), "Debug", textColor, 1f, TextAlignment.LEFT);
+    sprite.position = new Vector2();
+    frame.Add(sprite);
+
+    sprite = MySprite.CreateText("GPS:" + Me.GetPosition(), "Debug", textColor, 1f, TextAlignment.LEFT);
+    sprite.position = new Vector2();
+    frame.Add(sprite);
+}*/
+
 void drawMap(double maxRange)
 {
 	List<IMyTextPanel> displays = new List<IMyTextPanel> ();
 	List<IMyTextPanel> maps = new List<IMyTextPanel> ();
     List<IMyShipController> controls = new List<IMyShipController> ();
-    Vector3D o = new Vector3D(0f,1f,0f);
 	reScanObjectGroupLocal(displays, "[DRAW]");
 	reScanObjectGroupLocal(maps, "[MAP]");
     reScanObjects(controls);
     Vector3D myPosition = Me.GetPosition();
     List<gridPosition> allyGrids = new List<gridPosition>();
-    gridPosition myGrid = new gridPosition(myPosition.X, myPosition.Y, myPosition.Z, false, "Small");
+    gridPosition myGrid = new gridPosition(myPosition.X, myPosition.Y, myPosition.Z, false, "Large");
     IMyTerminalBlock refBlock = Me;
 
-    Echo(controls.Count().ToString());
     if (controls.Count() > 0)
     {
         refBlock = (IMyTerminalBlock)controls[0];
@@ -169,10 +196,6 @@ void drawMap(double maxRange)
         }
     }
 
-    o = Base6Directions.GetVector(refBlock.Orientation.Forward);
-    o.Normalize();
-    Vector3D transformedOrientation = Vector3D.TransformNormal(o, refBlock.WorldMatrix);
-
     if (maps.Count() == 0)
     {
         Echo("No map data detected");
@@ -184,12 +207,13 @@ void drawMap(double maxRange)
 		initDrawSurface(elem);
         using (var frame = elem.DrawFrame())
         {
-            allyGrids = parseGridPositions(maps[0].GetText(), false);
+            drawMapBorder(frame, (float)maxRange, elem.SurfaceSize, new Color(0,150,0), new Color(0,20,0));
+            allyGrids = parseGridPositions(maps[0].GetText(), false); //todo: get from status withour LCD
             foreach(var ally in allyGrids)
             {
-                Echo(ally.drawGrid2D(frame, (float)maxRange, elem.SurfaceSize, myGrid, transformedOrientation, new Color(0,200,0), new Color(0,50,0)));
+                Echo(ally.drawGrid2D(frame, (float)maxRange, elem.SurfaceSize, myGrid, refBlock.WorldMatrix, new Color(0,0,200), new Color(0,0,50)));
             }
-            Echo(myGrid.drawGrid2D(frame, (float)maxRange, elem.SurfaceSize, myGrid, transformedOrientation, new Color(0,0,200), new Color(0,0,50)));
+            Echo(myGrid.drawGrid2D(frame, (float)maxRange, elem.SurfaceSize, myGrid, refBlock.WorldMatrix, new Color(200,200,200), new Color(50,50,50)));
         }
     }
 }
@@ -224,6 +248,7 @@ List<gridPosition> parseGridPositions(string positionsList, bool isEnemy)
         JsonObject temp;
         temp = (JsonObject)elem; 
         var jsonPosition = ((JsonObject)temp["Position"]);
+        //todo: add grid type
         result.Add(new gridPosition(((JsonPrimitive)jsonPosition["X"]).GetValue<double>(), ((JsonPrimitive)jsonPosition["Y"]).GetValue<double>(), ((JsonPrimitive)jsonPosition["Z"]).GetValue<double>(), isEnemy, "Small"));
     }
     return result;
@@ -232,16 +257,6 @@ List<gridPosition> parseGridPositions(string positionsList, bool isEnemy)
 public void Main(string arg)
 {
     drawMap(1000);
-	/*	Vector2 tst = new Vector2(0f, 0f);
-		IMyTextSurface d = elem as IMyTextSurface;
-        using (var frame = d.DrawFrame())
-        {
-            var text = "No damage ";
-			var sprite = MySprite.CreateText(text, "Debug", new Color(255,150,0), 1.5f, TextAlignment.LEFT);
-			sprite.Position = new Vector2(10f,10f);
-            frame.Add(sprite);
-            frame.Add(new MySprite(SpriteType.TEXTURE, "SquareSimple", new Vector2(0f, 20f), new Vector2(512f, 1f), new Color(255,150,0), "test", TextAlignment.CENTER, 0f));
-		}*/
 }
 interface IJsonNonPrimitive
 {
