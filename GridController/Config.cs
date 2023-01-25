@@ -36,10 +36,14 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusConfig //@remove
         public string ConfSection = "GARM";
         public string GridTag = "[GRID]"; //зачем? есть тэг [INFO]
         public new string LogTag = "[LOG]";
+        public string radarTag = "[RADAR]";
         public double BATTERY_MAX_LOAD = 0.95;
+        public double mapRange = 1000;
 
         public string statusChannelTag = "RDOStatusChannel";
         public string commandChannelTag = "RDOCommandChannel";
+        public string targetsChannelTag = "RDOTargetsChannel";
+        public string gpsChannelTag = "RDOGPSChannel";
 
 
         public bool checkDestroyedBlocks = true;

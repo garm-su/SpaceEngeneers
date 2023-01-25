@@ -41,6 +41,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
         public List<string> gridDestroyedBlocks = new List<string>();
         public Dictionary<string, int> gridInventory = new Dictionary<string, int>();
         public List<MyDetectedEntityInfo> targets = new List<MyDetectedEntityInfo>();
+        public List<string> allyPositions = new List<string>();
 
         public bool gridStateSaved = false;
         public bool lockedState = false;
@@ -103,14 +104,12 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
             gridGas = getGridGasAmount("Hydrogen");
             gridLoad = getGridUsedCargoSpace();
             gridInventory = getGridInventory();
-            targets = getTurretsTargets();
             gridDamagedBlocks = getDamagedBlocks();
             gridDestroyedBlocks = getDestroyedBlocks();
+            gridThrusters = getGridThrusters();
             damagedBlockRatio = gridDamagedBlocks.Count() / allGridTerminalBlocks.Count();
             destroyedAmount = gridDestroyedBlocks.Count();
         }
-
-
 
         //===========================================================================================
 

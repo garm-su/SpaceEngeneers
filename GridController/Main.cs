@@ -35,11 +35,6 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
         Dictionary<string, int> ammoDefaultAmount = new Dictionary<string, int>(); //subtype_id, ammount
         Dictionary<string, int> itemsDefaultAmount = new Dictionary<string, int>(); //subtype_id, ammount - not ammo
 
-        List<IMyRadioAntenna> antenna = new List<IMyRadioAntenna>();
-
-        IMyBroadcastListener commandListener;
-        IMyBroadcastListener statusListener;
-
         //--------------------------------- rescan and config functions --------------------------------
         public class ArgParser
         {
@@ -217,13 +212,82 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
 
         }
 
+        public void sendStatus()
+        {
+            //send
+            //statusListener = IGC.RegisterBroadcastListener(statusChannelTag);
+            IGC.SendBroadcastMessage(statusChannelTag, getStatus());
+            //targetsChannelTag;
+            //gpsChannelTag;
+
+            IMyBroadcastListener commandListener = IGC.RegisterBroadcastListener(commandChannelTag);
+            while (commandListener.HasPendingMessage)
+            {
+                MyIGCMessage newRequest = commandListener.AcceptMessage();
+                if (commandListener.Tag == commandChannelTag)
+                {
+                    if (newRequest.Data is string)
+                    {
+                        JsonObject jsonData;
+                        try
+                        {
+                            jsonData = (new JSON((string)newRequest.Data)).Parse() as JsonObject;
+                        }
+                        catch (Exception e) // in case something went wrong (either your json is wrong or my library has a bug :P)
+                        {
+                            logger.write("There's somethign wrong with your json: " + e.Message);
+                            continue;
+                        }
+
+                        //todo move to sparate files
+                        switch (((JsonPrimitive)jsonData["action"]).GetValue<String>())
+                        {
+                            case "BaseStatus":
+                                BaseStatus[((JsonPrimitive)jsonData["type"]).GetValue<String>()] = ((JsonPrimitive)jsonData["value"]).GetValue<String>();
+                                break;
+                        }
+                    }
+                }
+            }
+
+            IMyBroadcastListener gpsListener = IGC.RegisterBroadcastListener(gpsChannelTag);
+            allyPositions.Clear();
+            while (gpsListener.HasPendingMessage)
+            {
+                MyIGCMessage newPos = gpsListener.AcceptMessage();
+                if (gpsListener.Tag == gpsChannelTag)
+                {
+                    if (newPos.Data is string)
+                    {
+                        JsonObject jsonData;
+                        try
+                        {
+                            jsonData = (new JSON((string)newPos.Data)).Parse() as JsonObject;
+                        }
+                        catch (Exception e) // in case something went wrong (either your json is wrong or my library has a bug :P)
+                        {
+                            logger.write("There's somethign wrong with your json: " + e.Message);
+                            continue;
+                        }
+                        allyPositions.Add((string)newPos.Data);
+                    }
+                }
+            }
+
+            var pos = new JsonObject("");
+            pos.Add(new JsonPrimitive("Name", Me.CubeGrid.CustomName));
+            pos.Add(new JsonObject("Position", Me.GetPosition()));
+            //pos.Add(new JsonObject("Type", )); //get my type
+            IGC.SendBroadcastMessage(gpsChannelTag, pos.ToString(false));
+
+        }
 
         public Program()
         {
             // Set the script to run every 100 ticks, so no timer needed.
             loadConfig();
             logger = new Log(this);
-            Runtime.UpdateFrequency = UpdateFrequency.Update100;
+            Runtime.UpdateFrequency = UpdateFrequency.Update10;
         }
 
         public void Main(string arg)
@@ -281,57 +345,39 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
                         saveGridState(update: true);
                         Echo("Grid state saved");
                         break;
+                    case "mapScaleUp":
+                        if (mapRange < 1000)
+                        {
+                            mapRange = mapRange * 2;
+                        }
+                        else
+                        {
+                            mapRange += 1000;
+                        }
+                        break;
+                    case "mapScaleDown":
+                        if (mapRange <= 1000)
+                        {
+                            mapRange = mapRange / 2;
+                        }
+                        else
+                        {
+                            mapRange -= 1000;
+                        }
+                        break;                        
                     default:
                         break;
                 }
             }
 
-
-            //rescan and init - remove section after refactor
-            List<IMyTextPanel> request_displays = new List<IMyTextPanel>();
-            reScanObjectGroupLocal(request_displays, RequestTag);
-            targets.Clear();
-
             //runtime actions
             updateGridInfo();
             checkMaxSpeed();
+
+            updateTargets();
             lcdDraw();
-
-            //send
-            //statusListener = IGC.RegisterBroadcastListener(statusChannelTag);
-            IGC.SendBroadcastMessage(statusChannelTag, getStatus());
-
-            commandListener = IGC.RegisterBroadcastListener(commandChannelTag);
-            while (commandListener.HasPendingMessage)
-            {
-                string message;
-                MyIGCMessage newRequest = commandListener.AcceptMessage();
-                if (commandListener.Tag == commandChannelTag)
-                {
-                    if (newRequest.Data is string)
-                    {
-                        JsonObject jsonData;
-                        try
-                        {
-                            jsonData = (new JSON((string)newRequest.Data)).Parse() as JsonObject;
-                        }
-                        catch (Exception e) // in case something went wrong (either your json is wrong or my library has a bug :P)
-                        {
-                            logger.write("There's somethign wrong with your json: " + e.Message);
-                            continue;
-                        }
-
-                        //todo move to sparate files
-                        switch (((JsonPrimitive)jsonData["action"]).GetValue<String>())
-                        {
-                            case "BaseStatus":
-                                BaseStatus[((JsonPrimitive)jsonData["type"]).GetValue<String>()] = ((JsonPrimitive)jsonData["value"]).GetValue<String>();
-                                break;
-                        }
-                    }
-                }
-            }
-
+            drawMap(mapRange);
+            sendStatus();
 
         }
 

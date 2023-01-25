@@ -144,58 +144,6 @@ namespace SpaceEngineers.UWBlockPrograms.Grid //@remove
             return result;
         }
 
-        public List<MyDetectedEntityInfo> getTurretsTargets()
-        {
-            List<MyDetectedEntityInfo> result = new List<MyDetectedEntityInfo>();
-            List<IMyLargeTurretBase> turrets = new List<IMyLargeTurretBase>();
-            reScanObjects(turrets);
-            foreach (IMyLargeTurretBase t in turrets)
-            {
-                if (t.HasTarget)
-                {
-                    MyDetectedEntityInfo trg = t.GetTargetedEntity();
-                    result.Add(trg);
-                }
-            }
-            return result;
-        }
-
-        public List<MyDetectedEntityInfo> getScannedTargets()
-        {
-            List<MyDetectedEntityInfo> result = new List<MyDetectedEntityInfo>();
-
-            return result;
-        }
-        public List<MyDetectedEntityInfo> getSensorsTargets()
-        {
-            List<MyDetectedEntityInfo> result = new List<MyDetectedEntityInfo>();
-            List<IMySensorBlock> sensors = new List<IMySensorBlock>();
-            //todo 
-            //IMySensorBlock
-            //DetectedEntities
-
-/*
-    List<IMyTextPanel> panels = new List<IMyTextPanel>();
-    string st = "";
-
-    foreach(var s in sensors)
-    {
-        if(!s.Closed)
-        {
-            List<MyDetectedEntityInfo> s_targets = new List<MyDetectedEntityInfo>();
-            s.DetectedEntities(s_targets);
-            foreach(var t in s_targets)
-            {
-                st = st + t.EntityId.ToString() + "\n";
-            }
-        }
-    }
-    panels[0].WriteText(st);
-*/
-
-            return result;
-        }        
-
         public List<string> getDamagedBlocks()
         {
             List<string> result = new List<string>();
@@ -212,9 +160,11 @@ namespace SpaceEngineers.UWBlockPrograms.Grid //@remove
             return result;
         }
 
-        public void updateGridThrusters()
+        public List<IMyThrust> getGridThrusters()
         {
+            List<IMyThrust> result = new List<IMyThrust>();
 
+            return result;
         }
 
     } //@remove
