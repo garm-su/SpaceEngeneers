@@ -160,12 +160,5 @@ namespace SpaceEngineers.UWBlockPrograms.Grid //@remove
             return result;
         }
 
-        public List<IMyThrust> getGridThrusters()
-        {
-            List<IMyThrust> result = new List<IMyThrust>();
-
-            return result;
-        }
-
     } //@remove
 } //@remove

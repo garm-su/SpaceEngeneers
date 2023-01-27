@@ -89,9 +89,6 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
                     }
                 }
                 destroyedAmount = counter;
-                //reScanObjectsLocal(currentState);
-                //destroyedAmount = allTBlocks.Count() - currentState.Count();
-                //todo: if block in allBlocks and not in current state add Block.CustomName to result;
                 //todo: add repair projector with tag [STATUS] as source
             }
             return result;
@@ -106,9 +103,12 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
             gridInventory = getGridInventory();
             gridDamagedBlocks = getDamagedBlocks();
             gridDestroyedBlocks = getDestroyedBlocks();
-            gridThrusters = getGridThrusters();
             damagedBlockRatio = gridDamagedBlocks.Count() / allGridTerminalBlocks.Count();
             destroyedAmount = gridDestroyedBlocks.Count();
+            if(destroyedAmount > 0)
+            {
+                reScanObjectsLocal(gridThrusters);
+            }
         }
 
         //===========================================================================================
@@ -120,6 +120,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
             reScanObjectsLocal(allGridTerminalBlocks);
 
             List<IMyThrust> gasThrusters = new List<IMyThrust>();
+            reScanObjectsLocal(gridThrusters);
             reScanObjectsLocal(gridGasEngines, item => item.BlockDefinition.SubtypeId.Contains("Hydrogen"));
             reScanObjectsLocal(gasThrusters, item => item.BlockDefinition.SubtypeId.Contains("Hydrogen"));
             reScanObjectsLocal(gridReactors);
