@@ -77,8 +77,6 @@
   <ItemGroup>
     <Compile Include="Program.cs" />
     
-    <Compile Include="Aligner.cs" />
-    
     <Compile Include="Checker.cs" />
 
     <Compile Include="Libraries/scheduler.cs" />
@@ -101,6 +99,7 @@
     <Compile Include="GridController/Radar.cs" />
     <Compile Include="GridController/Config.cs" />
     <Compile Include="GridController/Version.cs" />
+    <Compile Include="GridController/Aligner.cs" />
     
     <Compile Include="Json/Main.cs" />
     

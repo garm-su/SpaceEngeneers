@@ -20,3 +20,8 @@ maxSpeed,50
 
 //saveCurrentConfig
 saveConfig
+
+//start align to gravity
+alignGravity
+//stop align to gravity
+alignStop

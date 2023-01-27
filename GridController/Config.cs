@@ -37,6 +37,8 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusConfig //@remove
         public string GridTag = "[GRID]"; //зачем? есть тэг [INFO]
         public new string LogTag = "[LOG]";
         public string radarTag = "[RADAR]";
+        
+        public string controller = "[CONTROLLER]";
         public double BATTERY_MAX_LOAD = 0.95;
         public double mapRange = 1000;
 
@@ -90,6 +92,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusConfig //@remove
 
             InitValue(ini.Get(ConfSection, "decelerationDistance"), ref decelerationDistance);
             InitValue(ini.Get(ConfSection, "minPercentSpeed"), ref minPercentSpeed);
+            InitValue(ini.Get(ConfSection, "controller"), ref controller);
 
         }
 
@@ -118,6 +121,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusConfig //@remove
             ini.Set(ConfSection, "damageTreshold", damageTreshold);
             ini.Set(ConfSection, "decelerationDistance", decelerationDistance);
             ini.Set(ConfSection, "minPercentSpeed", minPercentSpeed);
+            ini.Set(ConfSection, "controller", controller);
 
             Me.CustomData = ini.ToString();
         }

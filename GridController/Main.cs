@@ -26,14 +26,15 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
     { //@remove
       // Your code goes between the next #endregion and #region
       //all terminalblocks
-        //all armor blocks - be defined
-        //item order
+      //all armor blocks - be defined
+      //item order
         Dictionary<string, int> ammoDefaultAmount = new Dictionary<string, int>(); //subtype_id, ammount
         Dictionary<string, int> itemsDefaultAmount = new Dictionary<string, int>(); //subtype_id, ammount - not ammo
 
         int iPos = 1;
         int iStep = 1;
         Scheduler _scheduler;
+        GyroAligner _aligner;
 
         //---------------------------- grid status info ----------------------------------
 
@@ -251,6 +252,11 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
             _scheduler.AddScheduledAction(lcdDraw, 0.5);
             _scheduler.AddScheduledAction(() => drawMap(mapRange), 0.5);
             _scheduler.AddScheduledAction(sendStatus, 1);
+
+            _aligner = new GyroAligner(this, controller);
+
+            _scheduler.AddScheduledAction(_aligner.Aligment, 50);
+            _scheduler.AddScheduledAction(_aligner.gyroJoin, 0.1);
         }
 
         public void ProcessArguments(string arg)
@@ -300,6 +306,13 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
                 case "fix":
                     saveGridState(update: true);
                     Echo("Grid state saved");
+                    break;
+                case "alignGravity":
+                    _aligner.direction = null;
+                    _aligner.Override(true);
+                    break;
+                case "alignStop":
+                    _aligner.Override(false);
                     break;
                 case "mapScaleUp":
                     if (mapRange < 1000)
