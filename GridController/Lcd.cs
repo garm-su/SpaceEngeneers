@@ -169,7 +169,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
             string result = new string(delimiter, strsize);
             return result;
         }
-        void initDrawSurface(IMyTextSurface s)
+        public void initDrawSurface(IMyTextSurface s)
         {
             s.ContentType = ContentType.SCRIPT;
             s.Script = "";

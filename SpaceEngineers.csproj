@@ -81,6 +81,7 @@
     
     <Compile Include="Checker.cs" />
 
+    <Compile Include="Libraries/scheduler.cs" />
     <Compile Include="Libraries/json.cs" />
     <Compile Include="Libraries/log.cs" />
     <Compile Include="Libraries/grid.cs" />

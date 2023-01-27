@@ -36,13 +36,13 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusRadar //@remove
             public gridPosition(double x, double y, double z, bool enemyFlag, string gridType, string name = "")
             {
                 gridName = name;
-                position = new Vector3D(x,y,z);
+                position = new Vector3D(x, y, z);
                 isEnemy = enemyFlag;
-                if(gridType.Contains("Static"))
+                if (gridType.Contains("Static"))
                 {
                     type = 0;
                 }
-                else if(gridType.Contains("Large"))
+                else if (gridType.Contains("Large"))
                 {
                     type = 1;
                 }
@@ -63,16 +63,16 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusRadar //@remove
                 var rDir = Vector3D.Normalize(rPos); //world direction to grid from myGrid
 
                 //Convert worldDirection into a local direction
-                Vector3D rVector = Vector3D.TransformNormal(rDir, MatrixD.Transpose(mat))*distance; //note that we transpose to go from world -> body
-                if(distance == 0)
+                Vector3D rVector = Vector3D.TransformNormal(rDir, MatrixD.Transpose(mat)) * distance; //note that we transpose to go from world -> body
+                if (distance == 0)
                 {
-                    rVector = new Vector3D(0f,0f,0f);
+                    rVector = new Vector3D(0f, 0f, 0f);
                 }
-                double spriteX = rVector.X * (surfaceSize.X/(2*maxRange)) + surfaceSize.X/2;
-                double lineHeight = rVector.Y * (surfaceSize.Y/(2*maxRange));
-                double spriteY = rVector.Z * (surfaceSize.Y/(2*maxRange)) + surfaceSize.Y/2;
+                double spriteX = rVector.X * (surfaceSize.X / (2 * maxRange)) + surfaceSize.X / 2;
+                double lineHeight = rVector.Y * (surfaceSize.Y / (2 * maxRange));
+                double spriteY = rVector.Z * (surfaceSize.Y / (2 * maxRange)) + surfaceSize.Y / 2;
 
-                frame.Add(new MySprite(SpriteType.TEXTURE, "SquareSimple", new Vector2((float)spriteX, (float)spriteY + (float)lineHeight/4), new Vector2(1f, (float)lineHeight/2), new Color(50,50,50), null, TextAlignment.CENTER, 0f));
+                frame.Add(new MySprite(SpriteType.TEXTURE, "SquareSimple", new Vector2((float)spriteX, (float)spriteY + (float)lineHeight / 4), new Vector2(1f, (float)lineHeight / 2), new Color(50, 50, 50), null, TextAlignment.CENTER, 0f));
                 if (distance <= maxRange)
                 {
                     switch (type)
@@ -101,29 +101,29 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusRadar //@remove
 
         void drawMapBorder(MySpriteDrawFrame frame, float maxRange, Vector2 surfaceSize, Color baseColor, Color borderColor)
         {
-            int marksCount = (int)Math.Round(maxRange/100);
-            frame.Add(new MySprite(SpriteType.TEXTURE, "SquareSimple", new Vector2(surfaceSize.X/2, surfaceSize.Y/2), new Vector2(surfaceSize.X-10f, surfaceSize.Y-10f), baseColor, null, TextAlignment.CENTER, 0f));
-            frame.Add(new MySprite(SpriteType.TEXTURE, "SquareSimple", new Vector2(surfaceSize.X/2, surfaceSize.Y/2), new Vector2(surfaceSize.X-12f, surfaceSize.Y-12f), new Color(0,0,0), null, TextAlignment.CENTER, 0f));
-            for(var i = 0; i < marksCount; i++)
+            int marksCount = (int)Math.Round(maxRange / 100);
+            frame.Add(new MySprite(SpriteType.TEXTURE, "SquareSimple", new Vector2(surfaceSize.X / 2, surfaceSize.Y / 2), new Vector2(surfaceSize.X - 10f, surfaceSize.Y - 10f), baseColor, null, TextAlignment.CENTER, 0f));
+            frame.Add(new MySprite(SpriteType.TEXTURE, "SquareSimple", new Vector2(surfaceSize.X / 2, surfaceSize.Y / 2), new Vector2(surfaceSize.X - 12f, surfaceSize.Y - 12f), new Color(0, 0, 0), null, TextAlignment.CENTER, 0f));
+            for (var i = 0; i < marksCount; i++)
             {
-                frame.Add(new MySprite(SpriteType.TEXTURE, "SquareSimple", new Vector2(5f + i*(surfaceSize.X - 10f)/marksCount, surfaceSize.Y/2), new Vector2(1f, surfaceSize.Y), borderColor, null, TextAlignment.CENTER, 0f));
-                frame.Add(new MySprite(SpriteType.TEXTURE, "SquareSimple", new Vector2(surfaceSize.X/2, 5f + i*(surfaceSize.Y - 10f)/marksCount), new Vector2(surfaceSize.X, 1f), borderColor, null, TextAlignment.CENTER, 0f));
+                frame.Add(new MySprite(SpriteType.TEXTURE, "SquareSimple", new Vector2(5f + i * (surfaceSize.X - 10f) / marksCount, surfaceSize.Y / 2), new Vector2(1f, surfaceSize.Y), borderColor, null, TextAlignment.CENTER, 0f));
+                frame.Add(new MySprite(SpriteType.TEXTURE, "SquareSimple", new Vector2(surfaceSize.X / 2, 5f + i * (surfaceSize.Y - 10f) / marksCount), new Vector2(surfaceSize.X, 1f), borderColor, null, TextAlignment.CENTER, 0f));
             }
         }
 
         void drawMapText(MySpriteDrawFrame frame, double maxRange, Vector2 surfaceSize, gridPosition myGrid, List<Color> colorScheme, int enemyCount, int allyCount)
         {
-            var sprite = MySprite.CreateText("Range:" + ((float)maxRange/1000).ToString() + "km", "Debug", colorScheme[0], 1f, TextAlignment.CENTER);
-            sprite.Position = new Vector2(surfaceSize.X/2, 15f);
+            var sprite = MySprite.CreateText("Range:" + ((float)maxRange / 1000).ToString() + "km", "Debug", colorScheme[0], 1f, TextAlignment.CENTER);
+            sprite.Position = new Vector2(surfaceSize.X / 2, 15f);
             frame.Add(sprite);
-            if(allyCount > 0)
+            if (allyCount > 0)
             {
                 sprite = MySprite.CreateText("Ally:" + allyCount.ToString(), "Debug", colorScheme[1], 1.2f, TextAlignment.LEFT);
                 sprite.Position = new Vector2(10f, surfaceSize.Y - 75f);
                 frame.Add(sprite);
-            }    
+            }
 
-            if(enemyCount > 0)
+            if (enemyCount > 0)
             {
                 sprite = MySprite.CreateText("Enemy:" + enemyCount.ToString(), "Debug", colorScheme[2], 1.2f, TextAlignment.RIGHT);
                 sprite.Position = new Vector2(surfaceSize.X - 10f, surfaceSize.Y - 75f);
@@ -137,17 +137,17 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusRadar //@remove
             gps += ":";
             gps += String.Format("{0:0.00}", myGrid.position.Z);
             sprite = MySprite.CreateText(gps, "Debug", colorScheme[0], 1f, TextAlignment.CENTER);
-            sprite.Position = new Vector2(surfaceSize.X/2, surfaceSize.Y - 40f);
+            sprite.Position = new Vector2(surfaceSize.X / 2, surfaceSize.Y - 40f);
             frame.Add(sprite);
         }
 
-        void drawMap(double maxRange)
+        public void drawMap(double maxRange)
         {
             string allyJson = "[" + string.Join(",", allyPositions) + "]";
             Echo(allyJson);
             string targetsJson = "";
-            List<IMyTerminalBlock> displays = new List<IMyTerminalBlock> ();
-            List<IMyShipController> controls = new List<IMyShipController> ();
+            List<IMyTerminalBlock> displays = new List<IMyTerminalBlock>();
+            List<IMyShipController> controls = new List<IMyShipController>();
             reScanObjectGroupLocal(displays, radarTag);
             reScanObjects(controls);
             Vector3D myPosition = Me.GetPosition();
@@ -160,7 +160,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusRadar //@remove
             if (controls.Count() > 0)
             {
                 refBlock = (IMyTerminalBlock)controls[0];
-                foreach(var control in controls)
+                foreach (var control in controls)
                 {
                     if (control.IsUnderControl)
                     {
@@ -168,29 +168,29 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusRadar //@remove
                     }
                 }
             }
-            
-            foreach(var display in displays)
+
+            foreach (var display in displays)
             {
                 var e = display as IMyTextSurfaceProvider;
                 var elem = e.GetSurface(0);
                 initDrawSurface(elem);
                 using (var frame = elem.DrawFrame())
                 {
-                    drawMapBorder(frame, (float)maxRange, elem.SurfaceSize, new Color(0,150,0), new Color(0,20,0));
+                    drawMapBorder(frame, (float)maxRange, elem.SurfaceSize, new Color(0, 150, 0), new Color(0, 20, 0));
                     List<Color> cSheme = new List<Color>();
-                    cSheme.Add(new Color(0,200,0));
-                    cSheme.Add(new Color(0,0,200));
-                    cSheme.Add(new Color(200,0,0));
+                    cSheme.Add(new Color(0, 200, 0));
+                    cSheme.Add(new Color(0, 0, 200));
+                    cSheme.Add(new Color(200, 0, 0));
                     drawMapText(frame, (float)maxRange, elem.SurfaceSize, myGrid, cSheme, 1, allyGrids.Count()); //enemyGrids.Count()
-                    foreach(var ally in allyGrids)
+                    foreach (var ally in allyGrids)
                     {
-                        ally.drawGrid2D(frame, (float)maxRange, elem.SurfaceSize, myGrid, refBlock.WorldMatrix, new Color(0,0,200), new Color(0,0,50));
+                        ally.drawGrid2D(frame, (float)maxRange, elem.SurfaceSize, myGrid, refBlock.WorldMatrix, new Color(0, 0, 200), new Color(0, 0, 50));
                     }
                     /*foreach(var enemy in enemyGrids)
                     {
                         enemy.drawGrid2D(frame, (float)maxRange, elem.SurfaceSize, myGrid, refBlock.WorldMatrix, new Color(200,0,0), new Color(50,0,0));
                     }*/
-                    myGrid.drawGrid2D(frame, (float)maxRange, elem.SurfaceSize, myGrid, refBlock.WorldMatrix, new Color(200,200,200), new Color(50,50,50));
+                    myGrid.drawGrid2D(frame, (float)maxRange, elem.SurfaceSize, myGrid, refBlock.WorldMatrix, new Color(200, 200, 200), new Color(50, 50, 50));
                 }
             }
         }
@@ -215,10 +215,10 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusRadar //@remove
                 return null;
             }
 
-            foreach(var elem in jsonData)
+            foreach (var elem in jsonData)
             {
                 JsonObject temp;
-                temp = (JsonObject)elem; 
+                temp = (JsonObject)elem;
                 var jsonPosition = ((JsonObject)temp["Position"]);
                 //todo: add grid type
                 result.Add(new gridPosition(((JsonPrimitive)jsonPosition["X"]).GetValue<double>(), ((JsonPrimitive)jsonPosition["Y"]).GetValue<double>(), ((JsonPrimitive)jsonPosition["Z"]).GetValue<double>(), isEnemy, "Small"));
@@ -265,15 +265,15 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusRadar //@remove
         public List<MyDetectedEntityInfo> getSensorsTargets()
         {
             List<MyDetectedEntityInfo> result = new List<MyDetectedEntityInfo>();
-            foreach(var s in gridSensors)
+            foreach (var s in gridSensors)
             {
-                if(!s.Closed)
+                if (!s.Closed)
                 {
                     List<MyDetectedEntityInfo> s_targets = new List<MyDetectedEntityInfo>();
                     s.DetectedEntities(s_targets);
-                    foreach(var t in s_targets)
+                    foreach (var t in s_targets)
                     {
-                        if ((t.Relationship == MyRelationsBetweenPlayerAndBlock.Enemies)&&(!result.Any(n => n.EntityId == t.EntityId)))
+                        if ((t.Relationship == MyRelationsBetweenPlayerAndBlock.Enemies) && (!result.Any(n => n.EntityId == t.EntityId)))
                         {
                             result.Add(t);
                         }
@@ -289,9 +289,9 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusRadar //@remove
             List<MyDetectedEntityInfo> localSens = getSensorsTargets();
             List<MyDetectedEntityInfo> localScan = getScannedTargets(); //todo
 
-            foreach(var elem in localSens)
+            foreach (var elem in localSens)
             {
-                if(!result.Any(n => n.EntityId == elem.EntityId))
+                if (!result.Any(n => n.EntityId == elem.EntityId))
                 {
                     result.Add(elem);
                 }
@@ -300,7 +300,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusRadar //@remove
             return result;//dummy, rework
         }
 
-        public void updateTargets() 
+        public void updateTargets()
         {
             targets.Clear();
             targets = updateLocalTargets();

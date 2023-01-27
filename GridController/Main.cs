@@ -34,6 +34,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
         //item order
         Dictionary<string, int> ammoDefaultAmount = new Dictionary<string, int>(); //subtype_id, ammount
         Dictionary<string, int> itemsDefaultAmount = new Dictionary<string, int>(); //subtype_id, ammount - not ammo
+        Scheduler _scheduler;
 
         //--------------------------------- rescan and config functions --------------------------------
         public class ArgParser
@@ -284,101 +285,101 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
 
         public Program()
         {
-            // Set the script to run every 100 ticks, so no timer needed.
             loadConfig();
             logger = new Log(this);
-            Runtime.UpdateFrequency = UpdateFrequency.Update10;
+            Runtime.UpdateFrequency = UpdateFrequency.Update1;
+
+            _scheduler = new Scheduler(this);
+
+            _scheduler.AddScheduledAction(updateGridInfo, 1);
+            _scheduler.AddScheduledAction(checkMaxSpeed, 10);
+            _scheduler.AddScheduledAction(updateTargets, 10);
+            _scheduler.AddScheduledAction(lcdDraw, 0.5);
+            _scheduler.AddScheduledAction(() => drawMap(mapRange), 0.5);
+            _scheduler.AddScheduledAction(sendStatus, 1);
         }
 
-        public void Main(string arg)
+        public void ProcessArguments(string arg)
         {
-            //logging and service actions
             logger.write("Main " + arg);
             if (arg.StartsWith(LogTag)) return;
+            arg += ",,";
+            var props = arg.Split(',');
 
-            //parse args and execute commands
-            //args = new ArgParser(arg);
-
-            if (arg != "")
+            switch (props[0])
             {
-                arg += ",,";
-                var props = arg.Split(',');
+                case "Battery":
+                    batteryLoad(props[1]);
+                    break;
+                case "cargoSave":
+                    cargoSave(props[1]);
+                    break;
+                case "cargoLoad":
+                    cargoLoad(props[1], props[2]);
+                    break;
+                case "cargoUnLoad":
+                    cargoUnLoad();
+                    break;
+                case "maxSpeed":
+                    setMaxSpeed(props[1]);
+                    break;
+                case "connect":
+                    connect(props[1], props[2]);
+                    break;
+                case "batteryCharge":
+                    batteryCharge(props[1]);
+                    break;
+                case "saveConfig":
+                    saveConfig();
+                    break;
+                case "loadConfig":
+                    loadConfig();
+                    break;
+                case "locked":
+                    lockedState = true;
+                    Echo("Grid is locked");
+                    break;
+                case "unlocked":
+                    lockedState = false;
+                    Echo("Manual override lock status");
+                    break;
+                case "fix":
+                    saveGridState(update: true);
+                    Echo("Grid state saved");
+                    break;
+                case "mapScaleUp":
+                    if (mapRange < 1000)
+                    {
+                        mapRange = mapRange * 2;
+                    }
+                    else
+                    {
+                        mapRange += 1000;
+                    }
+                    break;
+                case "mapScaleDown":
+                    if (mapRange <= 1000)
+                    {
+                        mapRange = mapRange / 2;
+                    }
+                    else
+                    {
+                        mapRange -= 1000;
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
 
-                switch (props[0])
-                {
-                    case "Battery":
-                        batteryLoad(props[1]);
-                        break;
-                    case "cargoSave":
-                        cargoSave(props[1]);
-                        break;
-                    case "cargoLoad":
-                        cargoLoad(props[1], props[2]);
-                        break;
-                    case "cargoUnLoad":
-                        cargoUnLoad();
-                        break;
-                    case "maxSpeed":
-                        setMaxSpeed(props[1]);
-                        break;
-                    case "connect":
-                        connect(props[1], props[2]);
-                        break;
-                    case "batteryCharge":
-                        batteryCharge(props[1]);
-                        break;
-                    case "saveConfig":
-                        saveConfig();
-                        break;
-                    case "loadConfig":
-                        loadConfig();
-                        break;
-                    case "locked":
-                        lockedState = true;
-                        Echo("Grid is locked");
-                        break;
-                    case "unlocked":
-                        lockedState = false;
-                        Echo("Manual override lock status");
-                        break;
-                    case "fix":
-                        saveGridState(update: true);
-                        Echo("Grid state saved");
-                        break;
-                    case "mapScaleUp":
-                        if (mapRange < 1000)
-                        {
-                            mapRange = mapRange * 2;
-                        }
-                        else
-                        {
-                            mapRange += 1000;
-                        }
-                        break;
-                    case "mapScaleDown":
-                        if (mapRange <= 1000)
-                        {
-                            mapRange = mapRange / 2;
-                        }
-                        else
-                        {
-                            mapRange -= 1000;
-                        }
-                        break;                        
-                    default:
-                        break;
-                }
+        public void Main(string arg, UpdateType updateSource)
+        {
+            if (!string.IsNullOrWhiteSpace(arg))
+            {
+                ProcessArguments(arg);
             }
 
-            //runtime actions
-            updateGridInfo();
-            checkMaxSpeed();
-
-            updateTargets();
-            lcdDraw();
-            drawMap(mapRange);
-            sendStatus();
-
+            _scheduler.Update();
         }
 
     }  //@remove
