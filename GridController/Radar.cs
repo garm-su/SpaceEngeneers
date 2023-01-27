@@ -144,7 +144,6 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusRadar //@remove
         public void drawMap(double maxRange)
         {
             string allyJson = "[" + string.Join(",", allyPositions) + "]";
-            Echo(allyJson);
             string targetsJson = "";
             List<IMyTerminalBlock> displays = new List<IMyTerminalBlock>();
             List<IMyShipController> controls = new List<IMyShipController>();
