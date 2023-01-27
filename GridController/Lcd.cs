@@ -314,11 +314,11 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
         public void lcdDraw()
         {
 
-            // IMyCockpit x;
-            // IMyTextPanel z;
-            // var a1 = x.SurfaceCount;
-            // var a2 = x.GetSurface(0);
-            // y.
+            // IMyCockpit x; @remove
+            // IMyTextPanel z; @remove
+            // var a1 = x.SurfaceCount; @remove
+            // var a2 = x.GetSurface(0); @remove
+            // y. @remove
 
             var info_displays = new List<IMyTextPanel>();
             var info_cockpits = new List<IMyCockpit>();

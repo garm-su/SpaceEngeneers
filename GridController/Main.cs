@@ -152,7 +152,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
             // Echo(statusMessage);
             return statusMessage;
         }
-        public string selfState()
+        public void selfState()
         {
             StringBuilder sb = new StringBuilder("----");
             iPos += iStep;
@@ -166,13 +166,19 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
             }
             string result = "Grid Controller v" + Ver;
             sb[iPos] = '|';
-            result += " working " + sb.ToString() + "\n";
-            return result;
+            result += "\nworking " + sb.ToString() + "\n";
+            var surface = Me.GetSurface(0);
+            surface.TextPadding = 30f;
+            surface.ContentType = ContentType.TEXT_AND_IMAGE;
+            surface.Font = "DEBUG";
+            surface.FontColor = new Color(0, 200, 0);
+            surface.FontSize = 1.2f;
+            surface.BackgroundColor = new Color(0, 5, 0);
         }
 
         public void sendStatus()
         {
-            // Echo(selfState());
+            selfState();
             IGC.SendBroadcastMessage(statusChannelTag, getStatus());
             //targetsChannelTag;
 
