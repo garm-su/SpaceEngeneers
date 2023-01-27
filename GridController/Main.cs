@@ -149,7 +149,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
                 Status.Add(statusEvents);
             }
             statusMessage = Status.ToString(false);
-            Echo(statusMessage);
+            // Echo(statusMessage);
             return statusMessage;
         }
         public string selfState()
@@ -172,7 +172,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
 
         public void sendStatus()
         {
-            Echo(selfState());
+            // Echo(selfState());
             IGC.SendBroadcastMessage(statusChannelTag, getStatus());
             //targetsChannelTag;
 
@@ -257,6 +257,8 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
 
             _scheduler.AddScheduledAction(_aligner.Aligment, 50);
             _scheduler.AddScheduledAction(_aligner.gyroJoin, 0.1);
+
+            Echo("Started");
         }
 
         public void ProcessArguments(string arg)

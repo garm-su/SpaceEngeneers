@@ -105,10 +105,11 @@ internal class GyroAligner
     {
         if (this.controller == null)
         {
-            if ((this.controller = parent.GridTerminalSystem.GetBlockWithName(controllerName) as IMyShipController) == null){
+            if ((this.controller = parent.GridTerminalSystem.GetBlockWithName(controllerName) as IMyShipController) == null)
+            {
                 return;
             }
-        }        
+        }
 
         var Gyros = new List<IMyGyro>();
         parent.reScanObjectsLocal(Gyros);
