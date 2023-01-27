@@ -30,6 +30,9 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
         //item order
         Dictionary<string, int> ammoDefaultAmount = new Dictionary<string, int>(); //subtype_id, ammount
         Dictionary<string, int> itemsDefaultAmount = new Dictionary<string, int>(); //subtype_id, ammount - not ammo
+
+        int iPos = 1;
+        int iStep = 1;
         Scheduler _scheduler;
 
         //---------------------------- grid status info ----------------------------------
@@ -148,9 +151,27 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
             Echo(statusMessage);
             return statusMessage;
         }
+        public string selfState()
+        {
+            StringBuilder sb = new StringBuilder("----");
+            iPos += iStep;
+            if(iPos == 3)
+            {
+                iStep = -1;
+            }
+            if(iPos == 0)
+            {
+                iStep = 1;
+            }
+            string result = "Grid Controller v" + Ver;
+            sb[iPos] = '|';
+            result += " working " + sb.ToString() + "\n";
+            return result;
+        }
 
         public void sendStatus()
         {
+            Echo(selfState());
             IGC.SendBroadcastMessage(statusChannelTag, getStatus());
             //targetsChannelTag;
 
