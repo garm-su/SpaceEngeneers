@@ -26,70 +26,11 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
     { //@remove
       // Your code goes between the next #endregion and #region
       //all terminalblocks
-
         //all armor blocks - be defined
-
-        ArgParser args;
-
         //item order
         Dictionary<string, int> ammoDefaultAmount = new Dictionary<string, int>(); //subtype_id, ammount
         Dictionary<string, int> itemsDefaultAmount = new Dictionary<string, int>(); //subtype_id, ammount - not ammo
         Scheduler _scheduler;
-
-        //--------------------------------- rescan and config functions --------------------------------
-        public class ArgParser
-        {
-            private Dictionary<string, string> modes;
-            private List<string> actions;
-            private Dictionary<string, int> values;
-            public int Count
-            {
-                get; set;
-            }
-            public ArgParser(string arg)
-            {
-                List<string> argList = arg.Split(',').Select(a => a.Trim()).ToList();
-                foreach (var elem in argList)
-                {
-                    List<string> currentElem = elem.Split('=').Select(a => a.Trim()).ToList();
-                    if (currentElem.Count() > 1)
-                    {
-                        int val;
-                        if (Int32.TryParse(currentElem[1], out val))
-                        {
-                            values.Add(currentElem[0], val);
-                        }
-                        else
-                        {
-                            modes.Add(currentElem[0], currentElem[1]);
-                        }
-                    }
-                    else
-                    {
-                        actions.Add(currentElem[0]);
-                    }
-                }
-            }
-            public bool isInModes(string argName)
-            {
-                return modes.ContainsKey(argName);
-            }
-            public bool isInActions(string argName)
-            {
-                return actions.Contains(argName);
-            }
-            public string getModeValue(string argName)
-            {
-                if (modes.ContainsKey(argName))
-                {
-                    return modes[argName];
-                }
-                else
-                {
-                    return "";
-                }
-            }
-        }
 
         //---------------------------- grid status info ----------------------------------
 
@@ -103,14 +44,12 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
             return (isTargets || isLocked || isLargeDamage || isDestroyedBlocks);
         }
 
-
         public bool isLowAmmo()
         {
             bool result = false;
             //todo
             return result;
         }
-
 
         public bool isLowFuel(out string ftype)
         {
@@ -205,21 +144,15 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
             {
                 Status.Add(statusEvents);
             }
-
-            //finish message
             statusMessage = Status.ToString(false);
             Echo(statusMessage);
             return statusMessage;
-
         }
 
         public void sendStatus()
         {
-            //send
-            //statusListener = IGC.RegisterBroadcastListener(statusChannelTag);
             IGC.SendBroadcastMessage(statusChannelTag, getStatus());
             //targetsChannelTag;
-            //gpsChannelTag;
 
             IMyBroadcastListener commandListener = IGC.RegisterBroadcastListener(commandChannelTag);
             while (commandListener.HasPendingMessage)
@@ -234,7 +167,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
                         {
                             jsonData = (new JSON((string)newRequest.Data)).Parse() as JsonObject;
                         }
-                        catch (Exception e) // in case something went wrong (either your json is wrong or my library has a bug :P)
+                        catch (Exception e)
                         {
                             logger.write("There's somethign wrong with your json: " + e.Message);
                             continue;
@@ -265,7 +198,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
                         {
                             jsonData = (new JSON((string)newPos.Data)).Parse() as JsonObject;
                         }
-                        catch (Exception e) // in case something went wrong (either your json is wrong or my library has a bug :P)
+                        catch (Exception e)
                         {
                             logger.write("There's somethign wrong with your json: " + e.Message);
                             continue;
