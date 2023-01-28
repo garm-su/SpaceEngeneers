@@ -182,6 +182,11 @@ public class JsonObject : JsonElement, IJsonNonPrimitive
         Value.Add(jsonObj.Key, jsonObj);
     }
 
+    public Vector3D ToVector3D(bool pretty = true)
+    {
+        return new Vector3D(((JsonPrimitive)Value["X"]).GetValue<double>(), ((JsonPrimitive)Value["Y"]).GetValue<double>(), ((JsonPrimitive)Value["Z"]).GetValue<double>());
+    }
+
     public override string ToString(bool pretty = true)
     {
         var result = "";

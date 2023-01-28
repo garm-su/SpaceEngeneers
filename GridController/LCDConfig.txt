@@ -1,0 +1,42 @@
+[GARM]
+Surface=BaseLoader,BaseAlarm,BaseWarn
+
+[GARM]
+Surface1=Battery,Fuel
+Surface2=Ammo
+
+//?
+Sprite
+
+
+// Остаток батареи
+Battery
+
+// Остаток водорода 
+Fuel
+
+// Блоки с уроном
+Damage
+
+
+// Инвентарь
+Inventory
+// только руда
+Ore
+// Только плавленное
+Ingots
+// Только патроны
+Ammo
+// Только компоненты
+Components
+
+// Лоадер, что база работает
+BaseLoader
+// Инфо с базы
+BaseInfo
+// Варны с базы
+BaseWarn
+// Алярмы с базы
+BaseAlarm
+
+- или любой другой символ один - разделитель

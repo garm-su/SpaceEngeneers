@@ -44,9 +44,6 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusConfig //@remove
 
         public string statusChannelTag = "RDOStatusChannel";
         public string commandChannelTag = "RDOCommandChannel";
-        public string targetsChannelTag = "RDOTargetsChannel";
-        public string gpsChannelTag = "RDOGPSChannel";
-
 
         public bool checkDestroyedBlocks = true;
 
@@ -78,6 +75,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusConfig //@remove
             InitValue(ini.Get(ConfSection, "InfoTag"), ref InfoTag);
             InitValue(ini.Get(ConfSection, "AimTag"), ref AimTag);
             InitValue(ini.Get(ConfSection, "LogTag"), ref LogTag);
+            InitValue(ini.Get(ConfSection, "radarTag"), ref radarTag);
             InitValue(ini.Get(ConfSection, "LogMaxCount"), ref LogMaxCount);
 
             InitValue(ini.Get(ConfSection, "BATTERY_MAX_LOAD"), ref BATTERY_MAX_LOAD);
@@ -110,6 +108,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusConfig //@remove
             ini.Set(ConfSection, "InfoTag", InfoTag);
             ini.Set(ConfSection, "AimTag", AimTag);
             ini.Set(ConfSection, "LogTag", LogTag);
+            ini.Set(ConfSection, "radarTag", radarTag);
             ini.Set(ConfSection, "LogMaxCount", LogMaxCount);
             ini.Set(ConfSection, "BATTERY_MAX_LOAD", BATTERY_MAX_LOAD);
             ini.Set(ConfSection, "statusChannelTag", statusChannelTag);

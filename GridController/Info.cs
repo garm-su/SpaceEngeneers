@@ -41,7 +41,6 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
         public List<string> gridDestroyedBlocks = new List<string>();
         public Dictionary<string, int> gridInventory = new Dictionary<string, int>();
         public List<MyDetectedEntityInfo> targets = new List<MyDetectedEntityInfo>();
-        public List<string> allyPositions = new List<string>();
 
         public bool gridStateSaved = false;
         public bool lockedState = false;
@@ -49,7 +48,12 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
         public bool hasReactors = false;
 
         public Dictionary<String, String> BaseStatus = new Dictionary<String, String>();
-		
+
+        public int MeGridType()
+        {
+            return Me.CubeGrid.IsStatic ? -1 : (int)Me.CubeGrid.GridSizeEnum;
+        }
+
         public void setAdditionalStatus(String s)
         {
             additionalStatus = s;
@@ -80,9 +84,9 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
             if (checkDestroyedBlocks)
             {
                 //List<IMyTerminalBlock> currentState = new List<IMyTerminalBlock>();
-                foreach(var block in allGridTerminalBlocks)
+                foreach (var block in allGridTerminalBlocks)
                 {
-                    if(block.Closed)
+                    if (block.Closed)
                     {
                         counter += 1;
                         result.Add(block.CustomName);
@@ -96,7 +100,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
 
         public void updateGridInfo()
         {
-			saveGridState();
+            saveGridState();
             gridCharge = getGridBatteryCharge();
             gridGas = getGridGasAmount("Hydrogen");
             gridLoad = getGridUsedCargoSpace();
@@ -105,7 +109,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
             gridDestroyedBlocks = getDestroyedBlocks();
             damagedBlockRatio = gridDamagedBlocks.Count() / allGridTerminalBlocks.Count();
             destroyedAmount = gridDestroyedBlocks.Count();
-            if(destroyedAmount > 0)
+            if (destroyedAmount > 0)
             {
                 reScanObjectsLocal(gridThrusters);
             }

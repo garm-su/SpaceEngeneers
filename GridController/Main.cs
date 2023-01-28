@@ -36,6 +36,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
         Scheduler _scheduler;
         GyroAligner _aligner;
 
+
         //---------------------------- grid status info ----------------------------------
 
         public bool isAttacked()
@@ -81,9 +82,8 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
             return result;
         }
 
-        public string getStatus()
+        public string getStatus(out string statusMessage)
         {
-            string statusMessage = "";
             string ftype;
             List<string> events = new List<string>();
             var Status = new JsonObject("");
@@ -148,19 +148,18 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
             {
                 Status.Add(statusEvents);
             }
-            statusMessage = Status.ToString(false);
-            // Echo(statusMessage);
-            return statusMessage;
+
+            return Status.ToString(false);
         }
         public void selfState()
         {
             StringBuilder sb = new StringBuilder("----");
             iPos += iStep;
-            if(iPos == 3)
+            if (iPos == 3)
             {
                 iStep = -1;
             }
-            if(iPos == 0)
+            if (iPos == 0)
             {
                 iStep = 1;
             }
@@ -179,7 +178,8 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
         public void sendStatus()
         {
             selfState();
-            IGC.SendBroadcastMessage(statusChannelTag, getStatus());
+            string statusMessage;
+            IGC.SendBroadcastMessage(statusChannelTag, getStatus(out statusMessage));
             //targetsChannelTag;
 
             IMyBroadcastListener commandListener = IGC.RegisterBroadcastListener(commandChannelTag);
@@ -201,47 +201,36 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
                             continue;
                         }
 
+                        if (jsonData.ContainsKey("Target") && ((JsonPrimitive)jsonData["Target"]).GetValue<String>() != Me.CubeGrid.CustomName) continue;
+
                         //todo move to sparate files
-                        switch (((JsonPrimitive)jsonData["action"]).GetValue<String>())
+                        var name = jsonData.ContainsKey("Name") ? ((JsonPrimitive)jsonData["Name"]).GetValue<String>() : "";
+                        switch (((JsonPrimitive)jsonData["Action"]).GetValue<String>())
                         {
                             case "BaseStatus":
-                                BaseStatus[((JsonPrimitive)jsonData["type"]).GetValue<String>()] = ((JsonPrimitive)jsonData["value"]).GetValue<String>();
+                                BaseStatus[((JsonPrimitive)jsonData["Type"]).GetValue<String>()] = ((JsonPrimitive)jsonData["Value"]).GetValue<String>();
+                                break;
+                            case "Coords":
+                                if (allyPositions.ContainsKey(name))
+                                {
+                                    allyPositions[name].update(jsonData);
+                                }
+                                else
+                                {
+                                    allyPositions[name] = new gridPosition(jsonData);
+                                }
+                                break;
+                            case "TB":
+                                var tbs = new List<IMyTimerBlock>();
+                                reScanObjectExactLocal(tbs, name);
+                                tbs.ForEach(tb => tb.Trigger());
                                 break;
                         }
                     }
                 }
             }
 
-            IMyBroadcastListener gpsListener = IGC.RegisterBroadcastListener(gpsChannelTag);
-            allyPositions.Clear();
-            while (gpsListener.HasPendingMessage)
-            {
-                MyIGCMessage newPos = gpsListener.AcceptMessage();
-                if (gpsListener.Tag == gpsChannelTag)
-                {
-                    if (newPos.Data is string)
-                    {
-                        JsonObject jsonData;
-                        try
-                        {
-                            jsonData = (new JSON((string)newPos.Data)).Parse() as JsonObject;
-                        }
-                        catch (Exception e)
-                        {
-                            logger.write("There's somethign wrong with your json: " + e.Message);
-                            continue;
-                        }
-                        allyPositions.Add((string)newPos.Data);
-                    }
-                }
-            }
-
-            var pos = new JsonObject("");
-            pos.Add(new JsonPrimitive("Name", Me.CubeGrid.CustomName));
-            pos.Add(new JsonObject("Position", Me.GetPosition()));
-            //pos.Add(new JsonObject("Type", )); //get my type
-            IGC.SendBroadcastMessage(gpsChannelTag, pos.ToString(false));
-
+            sendCoordsCmd(statusMessage);
         }
 
         public Program()
@@ -265,6 +254,15 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
             _scheduler.AddScheduledAction(_aligner.gyroJoin, 0.1);
 
             Echo("Started");
+        }
+
+        public void remoteTimerBlock(string gridName, string tbName)
+        {
+            var command = new JsonObject("");
+            command.Add(new JsonPrimitive("Action", "TB"));
+            command.Add(new JsonPrimitive("Target", gridName));
+            command.Add(new JsonPrimitive("Name", tbName));
+            IGC.SendBroadcastMessage(commandChannelTag, command.ToString());
         }
 
         public void ProcessArguments(string arg)
@@ -321,6 +319,9 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
                     break;
                 case "alignStop":
                     _aligner.Override(false);
+                    break;
+                case "remoteTimerBlock":
+                    remoteTimerBlock(props[1], props[2]);
                     break;
                 case "mapScaleUp":
                     if (mapRange < 1000)

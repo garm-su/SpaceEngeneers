@@ -25,3 +25,6 @@ saveConfig
 alignGravity
 //stop align to gravity
 alignStop
+
+//trigger Remote Timer Block
+remoteTimerBlock,#gridName#,#tb#

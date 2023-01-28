@@ -26,44 +26,77 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusRadar //@remove
     public class Program : GridStatusLcd.Program //@remove
     { //@remove
 
+        public Dictionary<string, gridPosition> allyPositions = new Dictionary<string, gridPosition>();
+
+        public void sendCoordsCmd(string statusMessage)
+        {
+            var pos = new JsonObject("");
+            pos.Add(new JsonPrimitive("Action", "Coords"));
+            pos.Add(new JsonPrimitive("Name", Me.CubeGrid.CustomName));
+            pos.Add(new JsonPrimitive("Status", statusMessage));
+            pos.Add(new JsonObject("Position", Me.GetPosition()));
+            pos.Add(new JsonPrimitive("Type", MeGridType()));
+            pos.Add(new JsonPrimitive("Enemy", 0));
+            IGC.SendBroadcastMessage(commandChannelTag, pos.ToString(false));
+        }
+
         public class gridPosition
         {
             public bool isEnemy;
             public string gridName;
             public Vector3D position;
-            public int type; //0 - static, 1 - large, 2 - small and characters
 
-            public gridPosition(double x, double y, double z, bool enemyFlag, string gridType, string name = "")
+            public int type;
+            //type: -1 - static, 0 - large, 1 - small and characters ( same as MyCubeSize )
+
+            public string status;
+
+            public gridPosition(JsonObject jsonData)
+            {
+                update(jsonData);
+            }
+
+            public gridPosition(Vector3D pos, bool enemyFlag, int gridType, string name = "")
             {
                 gridName = name;
-                position = new Vector3D(x, y, z);
+                position = pos;
                 isEnemy = enemyFlag;
-                if (gridType.Contains("Static"))
-                {
-                    type = 0;
-                }
-                else if (gridType.Contains("Large"))
-                {
-                    type = 1;
-                }
-                else
-                {
-                    type = 2;
-                }
+                type = gridType;
             }
+
             public override string ToString()
             {
                 return gridName + ":" + position.ToString();
             }
 
-            public void drawGrid2D(MySpriteDrawFrame frame, float maxRange, Vector2 surfaceSize, gridPosition myGrid, MatrixD mat, Color baseColor, Color borderColor)
+            public void drawGrid2D(MySpriteDrawFrame frame, float maxRange, Vector2 surfaceSize, gridPosition myGrid, MatrixD mat, Color baseColor)
             {
+                Color borderColor;
+                switch (status)
+                {
+                    case "green":
+                        borderColor = new Color(0, 128, 0);
+                        break;
+                    case "orange":
+                        borderColor = new Color(255, 128, 0);
+                        break;
+                    case "red":
+                        borderColor = new Color(255, 0, 0);
+                        break;
+                    default:
+                        borderColor = new Color(50, 50, 50);
+                        break;
+                }
+
                 var rPos = position - myGrid.position;
                 var distance = rPos.Length();
-                var rDir = Vector3D.Normalize(rPos); //world direction to grid from myGrid
+                var rDir = Vector3D.Normalize(rPos);
+                //world direction to grid from myGrid
 
                 //Convert worldDirection into a local direction
-                Vector3D rVector = Vector3D.TransformNormal(rDir, MatrixD.Transpose(mat)) * distance; //note that we transpose to go from world -> body
+                Vector3D rVector = Vector3D.TransformNormal(rDir, MatrixD.Transpose(mat)) * distance;
+                //note that we transpose to go from world -> body
+
                 if (distance == 0)
                 {
                     rVector = new Vector3D(0f, 0f, 0f);
@@ -77,15 +110,18 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusRadar //@remove
                 {
                     switch (type)
                     {
-                        case 0: //square
+                        case -1:
+                            //square bases
                             frame.Add(new MySprite(SpriteType.TEXTURE, "SquareSimple", new Vector2((float)spriteX, (float)spriteY), new Vector2(20f, 20f), borderColor, null, TextAlignment.CENTER, 0f));
                             frame.Add(new MySprite(SpriteType.TEXTURE, "SquareSimple", new Vector2((float)spriteX, (float)spriteY), new Vector2(17f, 17f), baseColor, null, TextAlignment.CENTER, 0f));
                             break;
-                        case 1: //triangle
+                        case 1:
+                            //triangle small ships
                             frame.Add(new MySprite(SpriteType.TEXTURE, "Triangle", new Vector2((float)spriteX, (float)spriteY), new Vector2(20f, 20f), borderColor, null, TextAlignment.CENTER, 0f));
                             frame.Add(new MySprite(SpriteType.TEXTURE, "Triangle", new Vector2((float)spriteX, (float)spriteY), new Vector2(17f, 17f), baseColor, null, TextAlignment.CENTER, 0f));
                             break;
-                        case 2: //circle
+                        case 0:
+                            //circle big ships
                             frame.Add(new MySprite(SpriteType.TEXTURE, "Circle", new Vector2((float)spriteX, (float)spriteY), new Vector2(20f, 20f), borderColor, null, TextAlignment.CENTER, 0f));
                             frame.Add(new MySprite(SpriteType.TEXTURE, "Circle", new Vector2((float)spriteX, (float)spriteY), new Vector2(17f, 17f), baseColor, null, TextAlignment.CENTER, 0f));
                             break;
@@ -97,6 +133,15 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusRadar //@remove
                 }
             }
 
+            internal void update(JsonObject jsonData)
+            {
+                gridName = ((JsonPrimitive)jsonData["Name"]).GetValue<String>();
+                position = ((JsonObject)jsonData["Position"]).ToVector3D();
+                status = ((JsonPrimitive)jsonData["Status"]).GetValue<String>();
+                type = ((JsonPrimitive)jsonData["Type"]).GetValue<int>();
+                isEnemy = ((JsonPrimitive)jsonData["Enemy"]).GetValue<int>() == 1;
+                //todo: last update and die time
+            }
         }
 
         void drawMapBorder(MySpriteDrawFrame frame, float maxRange, Vector2 surfaceSize, Color baseColor, Color borderColor)
@@ -143,18 +188,16 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusRadar //@remove
 
         public void drawMap(double maxRange)
         {
-            string allyJson = "[" + string.Join(",", allyPositions) + "]";
+
             string targetsJson = "";
             List<IMyTerminalBlock> displays = new List<IMyTerminalBlock>();
             List<IMyShipController> controls = new List<IMyShipController>();
             reScanObjectGroupLocal(displays, radarTag);
             reScanObjects(controls);
             Vector3D myPosition = Me.GetPosition();
-            List<gridPosition> allyGrids = new List<gridPosition>();
-            gridPosition myGrid = new gridPosition(myPosition.X, myPosition.Y, myPosition.Z, false, "Large");
+            gridPosition myGrid = new gridPosition(myPosition, false, MeGridType(), Me.CubeGrid.CustomName);
             IMyTerminalBlock refBlock = Me;
 
-            allyGrids = parseGridPositions(allyJson, false); //todo: get from status withour LCD
             //enemyGrids = parseGridPositions(targetsJson, false);
             if (controls.Count() > 0)
             {
@@ -180,49 +223,18 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusRadar //@remove
                     cSheme.Add(new Color(0, 200, 0));
                     cSheme.Add(new Color(0, 0, 200));
                     cSheme.Add(new Color(200, 0, 0));
-                    drawMapText(frame, (float)maxRange, elem.SurfaceSize, myGrid, cSheme, 1, allyGrids.Count()); //enemyGrids.Count()
-                    foreach (var ally in allyGrids)
+                    drawMapText(frame, (float)maxRange, elem.SurfaceSize, myGrid, cSheme, 1, allyPositions.Count()); //enemyGrids.Count()
+                    foreach (var ally in allyPositions.Values)
                     {
-                        ally.drawGrid2D(frame, (float)maxRange, elem.SurfaceSize, myGrid, refBlock.WorldMatrix, new Color(0, 0, 200), new Color(0, 0, 50));
+                        ally.drawGrid2D(frame, (float)maxRange, elem.SurfaceSize, myGrid, refBlock.WorldMatrix, new Color(0, 0, 200));
                     }
                     /*foreach(var enemy in enemyGrids)
                     {
                         enemy.drawGrid2D(frame, (float)maxRange, elem.SurfaceSize, myGrid, refBlock.WorldMatrix, new Color(200,0,0), new Color(50,0,0));
                     }*/
-                    myGrid.drawGrid2D(frame, (float)maxRange, elem.SurfaceSize, myGrid, refBlock.WorldMatrix, new Color(200, 200, 200), new Color(50, 50, 50));
+                    myGrid.drawGrid2D(frame, (float)maxRange, elem.SurfaceSize, myGrid, refBlock.WorldMatrix, new Color(200, 200, 200));
                 }
             }
-        }
-
-        List<gridPosition> parseGridPositions(string positionsList, bool isEnemy)
-        {
-            List<gridPosition> result = new List<gridPosition>();
-            JsonList jsonData;
-
-            if (positionsList == "[]")
-            {
-                return result;
-            }
-
-            try
-            {
-                jsonData = (new JSON(positionsList)).Parse() as JsonList;
-            }
-            catch (Exception e) // in case something went wrong (either your json is wrong or my library has a bug :P)
-            {
-                Echo("There's somethign wrong with your json: " + e.Message);
-                return null;
-            }
-
-            foreach (var elem in jsonData)
-            {
-                JsonObject temp;
-                temp = (JsonObject)elem;
-                var jsonPosition = ((JsonObject)temp["Position"]);
-                //todo: add grid type
-                result.Add(new gridPosition(((JsonPrimitive)jsonPosition["X"]).GetValue<double>(), ((JsonPrimitive)jsonPosition["Y"]).GetValue<double>(), ((JsonPrimitive)jsonPosition["Z"]).GetValue<double>(), isEnemy, "Small"));
-            }
-            return result;
         }
 
         public JsonList getEnemyTargetsData()

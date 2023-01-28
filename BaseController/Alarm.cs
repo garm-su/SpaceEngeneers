@@ -45,9 +45,9 @@ public class MessageOfType
         if (was || messages.Count > 0)
         {
             var command = new JsonObject("");
-            command.Add(new JsonPrimitive("action", "BaseStatus"));
-            command.Add(new JsonPrimitive("type", this.prefix));
-            command.Add(new JsonPrimitive("value", this.ToString()));
+            command.Add(new JsonPrimitive("Action", "BaseStatus"));
+            command.Add(new JsonPrimitive("Type", this.prefix));
+            command.Add(new JsonPrimitive("Value", this.ToString()));
             result = command.ToString();
         }
 
@@ -108,9 +108,9 @@ public class Messaging
     {
         var command = new JsonObject("");
         runningFrame = (runningFrame + 1) % (animFrames.Count() * runningMult);
-        command.Add(new JsonPrimitive("action", "BaseStatus"));
-        command.Add(new JsonPrimitive("type", "Loader"));
-        command.Add(new JsonPrimitive("value", animFrames[runningFrame / runningMult]));
+        command.Add(new JsonPrimitive("Action", "BaseStatus"));
+        command.Add(new JsonPrimitive("Type", "Loader"));
+        command.Add(new JsonPrimitive("Value", animFrames[runningFrame / runningMult]));
         parent.IGC.SendBroadcastMessage(parent.commandChannelTag, command.ToString());
     }
 
