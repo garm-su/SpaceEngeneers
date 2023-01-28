@@ -28,3 +28,8 @@ alignStop
 
 //trigger Remote Timer Block
 remoteTimerBlock,#gridName#,#tb#
+
+//map
+[RADAR] - LCD Tag
+mapScaleUp
+mapScaleDown
