@@ -103,6 +103,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
         public double getThrusterLoad(bool offFlag)
         {
             double maxThrust = 0;
+            int tc = 0;
             Vector3I downDirection = -Base6Directions.GetIntVector(currentControl.Orientation.Up);
             double mass = gridControls[0].CalculateShipMass().TotalMass;
             if((gridThrusters.Count() == 0)||(gravityFactor == 0))
@@ -116,16 +117,22 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
                     if(thruster.Enabled)
                     {
                         maxThrust += thruster.MaxEffectiveThrust;
+                        tc += 1;
                     }
                     else
                     {
                         if(offFlag)
                         {
                             maxThrust += thruster.MaxEffectiveThrust;
+                            tc += 1;
                         }
                     }
                 }
             }
+            Echo("Mass:" + mass.ToString());
+            Echo("Gravity:" + gravityFactor.ToString());
+            Echo("Counted thrusters:" + tc.ToString());
+            Echo("Max eff thrust:" + maxThrust.ToString());
             return mass*gravityFactor/maxThrust;
         }
 
