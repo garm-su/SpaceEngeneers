@@ -173,6 +173,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
             surface.FontColor = new Color(0, 200, 0);
             surface.FontSize = 1.2f;
             surface.BackgroundColor = new Color(0, 5, 0);
+            surface.WriteText(result);
         }
 
         public void sendStatus()
@@ -200,11 +201,9 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
                             logger.write("There's somethign wrong with your json: " + e.Message);
                             continue;
                         }
-
                         if (jsonData.ContainsKey("Target") && ((JsonPrimitive)jsonData["Target"]).GetValue<String>() != Me.CubeGrid.CustomName) continue;
-
                         //todo move to sparate files
-                        var name = jsonData.ContainsKey("Name") ? ((JsonPrimitive)jsonData["Name"]).GetValue<String>() : "";
+                        var name = jsonData.ContainsKey("Name") ? ((JsonPrimitive)jsonData["Name"]).GetValue<String>() : "";                    
                         switch (((JsonPrimitive)jsonData["Action"]).GetValue<String>())
                         {
                             case "BaseStatus":
@@ -221,6 +220,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
                                 }
                                 break;
                             case "TB":
+                                        Echo("TB");                                                        
                                 var tbs = new List<IMyTimerBlock>();
                                 reScanObjectExactLocal(tbs, name);
                                 tbs.ForEach(tb => tb.Trigger());
@@ -229,7 +229,6 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
                     }
                 }
             }
-
             sendCoordsCmd(statusMessage);
         }
 

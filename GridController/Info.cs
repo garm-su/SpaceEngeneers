@@ -22,7 +22,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
 { //@remove
     public class Program : GridStatusVersion.Program //@remove
     { //@remove
-        public const String Ver = "1.0";
+        public const String Ver = "1.1";
         public List<IMyTerminalBlock> allGridTerminalBlocks = new List<IMyTerminalBlock>();
         public List<IMyThrust> gridThrusters = new List<IMyThrust>();
         public List<IMySensorBlock> gridSensors = new List<IMySensorBlock>();
