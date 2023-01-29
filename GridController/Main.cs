@@ -36,6 +36,10 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
         Scheduler _scheduler;
         GyroAligner _aligner;
 
+        string dmg = "DAMAGED: ";
+        string constuct = "CNSTRCT: ";
+        string hud = " :HUD";
+
 
         //---------------------------- grid status info ----------------------------------
 
@@ -203,7 +207,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
                         }
                         if (jsonData.ContainsKey("Target") && ((JsonPrimitive)jsonData["Target"]).GetValue<String>() != Me.CubeGrid.CustomName) continue;
                         //todo move to sparate files
-                        var name = jsonData.ContainsKey("Name") ? ((JsonPrimitive)jsonData["Name"]).GetValue<String>() : "";                    
+                        var name = jsonData.ContainsKey("Name") ? ((JsonPrimitive)jsonData["Name"]).GetValue<String>() : "";
                         switch (((JsonPrimitive)jsonData["Action"]).GetValue<String>())
                         {
                             case "BaseStatus":
@@ -220,7 +224,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
                                 }
                                 break;
                             case "TB":
-                                        Echo("TB");                                                        
+                                Echo("TB");
                                 var tbs = new List<IMyTimerBlock>();
                                 reScanObjectExactLocal(tbs, name);
                                 tbs.ForEach(tb => tb.Trigger());
@@ -230,6 +234,52 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
                 }
             }
             sendCoordsCmd(statusMessage);
+        }
+
+        public void clearBlockName(IMyTerminalBlock blck, string prefix)
+        {
+            if (prefix != "" && blck.CustomName.StartsWith(prefix)) return;
+            var found = false;
+
+            if (prefix != dmg && blck.CustomName.StartsWith(dmg))
+            {
+                blck.CustomName = blck.CustomName.Substring(dmg.Length);
+                found = true;
+            }
+            if (prefix != constuct && blck.CustomName.StartsWith(constuct))
+            {
+                blck.CustomName = blck.CustomName.Substring(dmg.Length);
+                found = true;
+            }
+            if (prefix == "")
+            {
+                if (blck.CustomName.EndsWith(hud))
+                {
+                    blck.CustomName = blck.CustomName.Substring(0, blck.CustomName.Length - hud.Length);
+                }
+                else if (found)
+                {
+                    blck.ShowOnHUD = false;
+                }
+            }
+            else
+            {
+                var was = blck.ShowOnHUD && !found;
+                blck.CustomName = prefix + blck.CustomName + (was ? hud : "");
+                blck.ShowOnHUD = true;
+            }
+
+        }
+
+        public void hudDmg()
+        {
+            var blocks = new List<IMyTerminalBlock>();
+            reScanObjectsLocal(blocks);
+            foreach (var block in blocks)
+            {
+                IMySlimBlock slimblock = block.CubeGrid.GetCubeBlock(block.Position);
+                clearBlockName(block, slimblock.CurrentDamage > 0 ? dmg : slimblock.BuildIntegrity < slimblock.MaxIntegrity ? constuct : "");
+            }
         }
 
         public Program()
@@ -247,6 +297,8 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
             _scheduler.AddScheduledAction(() => drawMap(mapRange), 6);
             _scheduler.AddScheduledAction(sendStatus, 1);
             _scheduler.AddScheduledAction(logger.printToSurfaces, 1);
+
+            _scheduler.AddScheduledAction(hudDmg, 0.2);
 
             _aligner = new GyroAligner(this, controller);
 

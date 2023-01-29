@@ -147,9 +147,9 @@ namespace SpaceEngineers.UWBlockPrograms.Grid //@remove
         public List<string> getDamagedBlocks()
         {
             List<string> result = new List<string>();
-            List<IMyTerminalBlock> grid = new List<IMyTerminalBlock>();
+            var grid = new List<IMyTerminalBlock>();
             reScanObjectsLocal(grid);
-            foreach (IMyTerminalBlock terminalBlock in grid)
+            foreach (var terminalBlock in grid)
             {
                 IMySlimBlock slimBlock = terminalBlock.CubeGrid.GetCubeBlock(terminalBlock.Position);
                 if (slimBlock.CurrentDamage > 0)
