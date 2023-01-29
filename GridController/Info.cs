@@ -25,6 +25,8 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
         public const String Ver = "1.1";
         public List<IMyTerminalBlock> allGridTerminalBlocks = new List<IMyTerminalBlock>();
         public List<IMyThrust> gridThrusters = new List<IMyThrust>();
+        public List<IMyShipController> gridControls = new List<IMyShipController>();
+        public IMyShipController currentControl;
         public List<IMySensorBlock> gridSensors = new List<IMySensorBlock>();
         List<IMyPowerProducer> gridGasEngines = new List<IMyPowerProducer>();
         List<IMyReactor> gridReactors = new List<IMyReactor>();
@@ -35,6 +37,8 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
         public double gridCharge = 0;
         public double gridGas = 0;
         public double gridLoad = 0;
+        public double thrustersLoad = 0;
+        public double gravityFactor = 0;
         public double damagedBlockRatio = 0;
         public double destroyedAmount = 0;
         public List<string> gridDamagedBlocks = new List<string>();
@@ -68,11 +72,9 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
         public double getGridVelocity()
         {
             double result = 0;
-            List<IMyShipController> controls = new List<IMyShipController>();
-            reScanObjectsLocal(controls);
-            if (controls.Count() > 0)
+            if (gridControls.Count() > 0)
             {
-                result = (double)controls[0].GetShipVelocities().LinearVelocity.Length();
+                result = (double)gridControls[0].GetShipVelocities().LinearVelocity.Length();
             }
             return result;
         }
@@ -98,6 +100,35 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
             return result;
         }
 
+        public double getThrusterLoad(bool offFlag)
+        {
+            double maxThrust = 0;
+            Vector3I downDirection = -Base6Directions.GetIntVector(currentControl.Orientation.Up);
+            double mass = gridControls[0].CalculateShipMass().TotalMass;
+            if((gridThrusters.Count() == 0)||(gravityFactor == 0))
+            {
+                return 0;
+            }
+            foreach(var thruster in gridThrusters)
+            {
+                if((!thruster.Closed)&&(thruster.GridThrustDirection == downDirection))
+                {
+                    if(thruster.Enabled)
+                    {
+                        maxThrust += thruster.MaxEffectiveThrust;
+                    }
+                    else
+                    {
+                        if(offFlag)
+                        {
+                            maxThrust += thruster.MaxEffectiveThrust;
+                        }
+                    }
+                }
+            }
+            return mass*gravityFactor/maxThrust;
+        }
+
         public void updateGridInfo()
         {
             saveGridState();
@@ -109,22 +140,35 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
             gridDestroyedBlocks = getDestroyedBlocks();
             damagedBlockRatio = gridDamagedBlocks.Count() / allGridTerminalBlocks.Count();
             destroyedAmount = gridDestroyedBlocks.Count();
+            if(gridControls.Count() > 0)
+            {
+                currentControl = gridControls[0];
+                foreach(var c in gridControls)
+                {
+                    if(c.IsUnderControl)
+                    {
+                        currentControl = c;
+                        break;
+                    }
+                }
+                gravityFactor = currentControl.GetNaturalGravity().Length();                
+                thrustersLoad = getThrusterLoad(false);        
+                Echo(thrustersLoad.ToString());    
+            }
             if (destroyedAmount > 0)
             {
                 reScanObjectsLocal(gridThrusters);
             }
         }
 
-        //===========================================================================================
-
         //------------------------------------ arg commands ------------------------------------------
         public void saveGridState(bool update = false)
         {
             if (gridStateSaved && !update) return;
             reScanObjectsLocal(allGridTerminalBlocks);
-
             List<IMyThrust> gasThrusters = new List<IMyThrust>();
             reScanObjectsLocal(gridThrusters);
+            reScanObjectsLocal(gridControls);
             reScanObjectsLocal(gridGasEngines, item => item.BlockDefinition.SubtypeId.Contains("Hydrogen"));
             reScanObjectsLocal(gasThrusters, item => item.BlockDefinition.SubtypeId.Contains("Hydrogen"));
             reScanObjectsLocal(gridReactors);

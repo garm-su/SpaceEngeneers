@@ -191,19 +191,18 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusRadar //@remove
 
             string targetsJson = "";
             List<IMyTerminalBlock> displays = new List<IMyTerminalBlock>();
-            List<IMyShipController> controls = new List<IMyShipController>();
             reScanObjectGroupLocal(displays, radarTag);
-            reScanObjects(controls);
             Vector3D myPosition = Me.GetPosition();
             gridPosition myGrid = new gridPosition(myPosition, false, MeGridType(), Me.CubeGrid.CustomName);
             IMyTerminalBlock refBlock = Me;
 
             //enemyGrids = parseGridPositions(targetsJson, false);
-            if (controls.Count() > 0)
+            if (gridControls.Count() > 0)
             {
-                refBlock = (IMyTerminalBlock)controls[0];
-                foreach (var control in controls)
+                refBlock = (IMyTerminalBlock)gridControls[0];
+                foreach (var control in gridControls)
                 {
+                    //todo - add mandatory orientation tag
                     if (control.IsUnderControl)
                     {
                         refBlock = (IMyTerminalBlock)control;

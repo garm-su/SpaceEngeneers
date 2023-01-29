@@ -244,6 +244,10 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
                     case "Fuel":
                         result.Add(lcdFuelInfo(letters));
                         break;
+                    case "Thrust":
+                        var t = "Hover thrust load:" + (Math.Round(thrustersLoad*100)).ToString() + "%";
+                        result.Add(t);
+                        break;                        
                     case "Damage":
                         result.Add(lcdDamageInfo(letters));
                         break;
