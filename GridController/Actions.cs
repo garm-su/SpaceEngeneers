@@ -143,7 +143,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusActions //@remove
                         if (dictionary.ContainsKey(resourceName) && dictionary[resourceName] > 0)
                         {
                             var countToMove = Math.Min(dictionary[resourceName], (int)item.Amount);
-                            sourse.TransferItemTo(destination, k, null, true);
+                            sourse.TransferItemTo(destination, k, null, true, countToMove);
                             dictionary[resourceName] -= countToMove;
                         }
                     }
