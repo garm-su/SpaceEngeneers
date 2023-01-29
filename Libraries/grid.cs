@@ -32,7 +32,7 @@ namespace SpaceEngineers.UWBlockPrograms.Grid //@remove
             ini.GetKeys(group, keys);
 
             foreach (var key in keys)
-            {                
+            {
                 minResourses[key.Name] = ini.Get(key).ToInt32();
             }
         }
@@ -43,11 +43,11 @@ namespace SpaceEngineers.UWBlockPrograms.Grid //@remove
         }
         public void reScanObjectExactLocal<T>(List<T> result, String name) where T : class, IMyTerminalBlock
         {
-            GridTerminalSystem.GetBlocksOfType<T>(result, item => item.CubeGrid == Me.CubeGrid && item.CustomName == name);
+            GridTerminalSystem.GetBlocksOfType<T>(result, item => item.CubeGrid.IsSameConstructAs(Me.CubeGrid) && item.CustomName == name);
         }
         public void reScanObjectGroupLocal<T>(List<T> result, String name) where T : class, IMyTerminalBlock
         {
-            GridTerminalSystem.GetBlocksOfType<T>(result, item => item.CubeGrid == Me.CubeGrid && item.CustomName.Contains(name));
+            GridTerminalSystem.GetBlocksOfType<T>(result, item => item.CubeGrid.IsSameConstructAs(Me.CubeGrid) && item.CustomName.Contains(name));
         }
         public void reScanObjectGroup<T>(List<T> result, String name) where T : class, IMyTerminalBlock
         {
@@ -55,7 +55,7 @@ namespace SpaceEngineers.UWBlockPrograms.Grid //@remove
         }
         public void reScanObjectGroupLocal<T>(List<T> result, String name, Func<T, bool> check) where T : class, IMyTerminalBlock
         {
-            GridTerminalSystem.GetBlocksOfType<T>(result, item => item.CubeGrid == Me.CubeGrid && item.CustomName.Contains(name) && check(item));
+            GridTerminalSystem.GetBlocksOfType<T>(result, item => item.CubeGrid.IsSameConstructAs(Me.CubeGrid) && item.CustomName.Contains(name) && check(item));
         }
         public void reScanObjectGroup<T>(List<T> result, String name, Func<T, bool> check) where T : class, IMyTerminalBlock
         {
@@ -63,11 +63,11 @@ namespace SpaceEngineers.UWBlockPrograms.Grid //@remove
         }
         public void reScanObjectsLocal<T>(List<T> result, Func<T, bool> check) where T : class, IMyTerminalBlock
         {
-            GridTerminalSystem.GetBlocksOfType<T>(result, item => item.CubeGrid == Me.CubeGrid && check(item));
+            GridTerminalSystem.GetBlocksOfType<T>(result, item => item.CubeGrid.IsSameConstructAs(Me.CubeGrid) && check(item));
         }
         public void reScanObjectsLocal<T>(List<T> result) where T : class, IMyTerminalBlock
         {
-            GridTerminalSystem.GetBlocksOfType<T>(result, item => item.CubeGrid == Me.CubeGrid);
+            GridTerminalSystem.GetBlocksOfType<T>(result, item => item.CubeGrid.IsSameConstructAs(Me.CubeGrid));
         }
         public void reScanObjects<T>(List<T> result) where T : class, IMyTerminalBlock
         {
