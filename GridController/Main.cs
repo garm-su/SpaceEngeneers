@@ -244,7 +244,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
             _scheduler.AddScheduledAction(checkMaxSpeed, 10);
             _scheduler.AddScheduledAction(updateTargets, 10);
             _scheduler.AddScheduledAction(lcdDraw, 0.5);
-            _scheduler.AddScheduledAction(() => drawMap(mapRange), 0.5);
+            _scheduler.AddScheduledAction(() => drawMap(mapRange), 6);
             _scheduler.AddScheduledAction(sendStatus, 1);
             _scheduler.AddScheduledAction(logger.printToSurfaces, 1);
 

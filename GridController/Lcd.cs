@@ -254,6 +254,9 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
                     case "Alerts":
                         //result += lcdAlerts(letters);
                         break;
+                    case "CLoad":
+                        result.Add("Cargo load:" + (Math.Round(getCargoLoad()*100)).ToString() + "%");
+                        break;
                     case "Inventory":
                         result.Add(lcdInventoryInfo(gridInventory, letters));
                         break;

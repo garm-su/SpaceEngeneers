@@ -129,6 +129,24 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
             return mass*gravityFactor/maxThrust;
         }
 
+        public double getCargoLoad()
+        {
+            double space = 0;
+            double used = 0;
+            var cargos = new List<IMyCargoContainer>();
+            reScanObjectsLocal(cargos);
+            foreach(var c in cargos)
+            {
+                if(c.HasInventory)
+                {
+                    var i = c.GetInventory();
+                    space += (double)i.MaxVolume;
+                    used += (double)i.CurrentVolume;
+                }
+            }
+            return used/space;
+        }
+
         public void updateGridInfo()
         {
             saveGridState();
