@@ -104,36 +104,23 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
         {
             double maxThrust = 0;
             int tc = 0;
-            Vector3I downDirection = -Base6Directions.GetIntVector(currentControl.Orientation.Up);
+            var downDirection = Base6Directions.GetOppositeDirection(currentControl.Orientation.Up);
             double mass = gridControls[0].CalculateShipMass().TotalMass;
-            if((gridThrusters.Count() == 0)||(gravityFactor == 0))
+            if ((gridThrusters.Count() == 0) || (gravityFactor == 0))
             {
                 return 0;
             }
-            foreach(var thruster in gridThrusters)
+            foreach (var thruster in gridThrusters)
             {
-                if((!thruster.Closed)&&(thruster.GridThrustDirection == downDirection))
+                if ((!thruster.Closed)
+                    && (thruster.Enabled || offFlag)
+                    && (thruster.Orientation.Forward == downDirection))
                 {
-                    if(thruster.Enabled)
-                    {
-                        maxThrust += thruster.MaxEffectiveThrust;
-                        tc += 1;
-                    }
-                    else
-                    {
-                        if(offFlag)
-                        {
-                            maxThrust += thruster.MaxEffectiveThrust;
-                            tc += 1;
-                        }
-                    }
+                    maxThrust += thruster.MaxEffectiveThrust;
+                    tc += 1;
                 }
             }
-            Echo("Mass:" + mass.ToString());
-            Echo("Gravity:" + gravityFactor.ToString());
-            Echo("Counted thrusters:" + tc.ToString());
-            Echo("Max eff thrust:" + maxThrust.ToString());
-            return mass*gravityFactor/maxThrust;
+            return mass * gravityFactor / maxThrust;
         }
 
         public double getCargoLoad()
@@ -142,16 +129,16 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
             double used = 0;
             var cargos = new List<IMyCargoContainer>();
             reScanObjectsLocal(cargos);
-            foreach(var c in cargos)
+            foreach (var c in cargos)
             {
-                if(c.HasInventory)
+                if (c.HasInventory)
                 {
                     var i = c.GetInventory();
                     space += (double)i.MaxVolume;
                     used += (double)i.CurrentVolume;
                 }
             }
-            return used/space;
+            return used / space;
         }
 
         public void updateGridInfo()
@@ -165,20 +152,20 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
             gridDestroyedBlocks = getDestroyedBlocks();
             damagedBlockRatio = gridDamagedBlocks.Count() / allGridTerminalBlocks.Count();
             destroyedAmount = gridDestroyedBlocks.Count();
-            if(gridControls.Count() > 0)
+            if (gridControls.Count() > 0)
             {
                 currentControl = gridControls[0];
-                foreach(var c in gridControls)
+                foreach (var c in gridControls)
                 {
-                    if(c.IsUnderControl)
+                    if (c.IsUnderControl)
                     {
                         currentControl = c;
                         break;
                     }
                 }
-                gravityFactor = currentControl.GetNaturalGravity().Length();                
-                thrustersLoad = getThrusterLoad(false);        
-                Echo(thrustersLoad.ToString());    
+                gravityFactor = currentControl.GetNaturalGravity().Length();
+                thrustersLoad = getThrusterLoad(false);
+                Echo(thrustersLoad.ToString());
             }
             if (destroyedAmount > 0)
             {
