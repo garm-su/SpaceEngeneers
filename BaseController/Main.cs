@@ -319,7 +319,7 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
                     var destination = cargo.GetInventory();
                     var old_mass = destination.CurrentMass;
 
-                    if (!destination.IsFull && sourse.IsConnectedTo(destination))
+                    if (!destination.IsFull && sourse.IsConnectedTo(destination) && sourse.CanTransferItemTo(destination, item.Type))
                     {
                         var transfered = sourse.TransferItemTo(destination, item);
                         var new_mass = cargo.GetInventory().CurrentMass;
