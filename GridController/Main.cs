@@ -198,7 +198,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
                         }
                         catch (Exception e)
                         {
-                            logger.write("There's somethign wrong with your json: " + e.Message);
+                            logger.write("There's somethign wrong with your json: " + e.Message + " > " + (string)newRequest.Data);
                             continue;
                         }
                         if (jsonData.ContainsKey("Target") && ((JsonPrimitive)jsonData["Target"]).GetValue<String>() != Me.CubeGrid.CustomName) continue;
@@ -246,6 +246,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
             _scheduler.AddScheduledAction(lcdDraw, 0.5);
             _scheduler.AddScheduledAction(() => drawMap(mapRange), 0.5);
             _scheduler.AddScheduledAction(sendStatus, 1);
+            _scheduler.AddScheduledAction(logger.printToSurfaces, 1);
 
             _aligner = new GyroAligner(this, controller);
 

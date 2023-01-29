@@ -5,7 +5,7 @@ Surface=BaseLoader,BaseAlarm,BaseWarn
 Surface1=Battery,Fuel
 Surface2=Ammo
 
-//?
+//Должно быть первой командой - выводить графически инфо
 Sprite
 
 

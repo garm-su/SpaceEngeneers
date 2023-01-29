@@ -27,20 +27,24 @@ namespace SpaceEngineers.UWBlockPrograms.LogLibrary //@remove
 
         public class LogEntry
         {
+
             public string log;
             public int count;
+            public string time;
 
             public LogEntry(string info)
             {
                 log = info;
                 count = 1;
+                time = DateTime.Now.ToString("HH:mm:ss");
             }
 
             public void inc()
             {
                 count++;
+                time = DateTime.Now.ToString("HH:mm:ss");
             }
-            public override string ToString() => $"x{count}: {log}";
+            public override string ToString() => $"{time}{(count > 1 ? " " + count.ToString() : "")}: {log}";
         }
 
         public class Log
@@ -59,6 +63,12 @@ namespace SpaceEngineers.UWBlockPrograms.LogLibrary //@remove
                 this.parent = program;
             }
 
+            public void printToSurfaces()
+            {
+                var result = String.Join("\n", logs);
+                surfaces.ForEach((surface) => surface.WriteText(result));
+            }
+
             public void write(String info)
             {
                 rescan();
@@ -75,9 +85,6 @@ namespace SpaceEngineers.UWBlockPrograms.LogLibrary //@remove
                 {
                     logs.RemoveRange(parent.LogMaxCount, logs.Count - parent.LogMaxCount);
                 }
-
-                var result = String.Join("\n", logs);
-                surfaces.ForEach((surface) => surface.WriteText(result));
             }
         }
 

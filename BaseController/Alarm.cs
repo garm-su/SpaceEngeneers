@@ -41,7 +41,7 @@ public class MessageOfType
 
     public String next()
     {
-        String result = "Foo";
+        String result = null;
         if (was || messages.Count > 0)
         {
             var command = new JsonObject("");
@@ -124,7 +124,6 @@ public class Messaging
             parent.Echo("Next(" + message.prefix + "): " + (status == null ? "Null" : "\"" + status.ToString() + "\""));
             if (status != null)
             {
-                parent.logger.write(status);
                 parent.IGC.SendBroadcastMessage(parent.commandChannelTag, status);
             }
         };

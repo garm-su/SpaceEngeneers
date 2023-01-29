@@ -41,6 +41,8 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
             alarmTag = "[ALARM]",
             infoTag = "[INFO BASE]";
 
+        Scheduler _scheduler;
+
         public string statusChannelTag = "RDOStatusChannel";
         public string commandChannelTag = "RDOCommandChannel";
 
@@ -106,14 +108,75 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
         resourcesCargos = new List<IMyCargoContainer>(),
         ammoCargos = new List<IMyCargoContainer>();
 
+        private void recalcAll()
+        {
+
+            iceAlarm = false;
+
+            if (h2generatorStarted)
+            {
+                Alarms.warn("H2 Engines is ON");
+            }
+            else
+            {
+
+            }
+
+            reScanAssemblers();
+            reScanObjectGroup(userCargos, UserTag); //todo move to one loop
+            reScanObjectGroup(resourcesCargos, ResourcesTag);
+            reScanObjectGroup(componentCargos, ComponentsTag);
+            reScanObjectGroup(ammoCargos, AmmoTag);
+
+            Alarms.info("Resources Cargo: " + resourcesCargos.Count.ToString());
+            Alarms.info("Component Cargo: " + componentCargos.Count.ToString());
+            Alarms.info("User Cargo: " + userCargos.Count.ToString());
+            Alarms.info("Ammo Cargo: " + ammoCargos.Count.ToString());
+            Alarms.info("Assemblers: " + allAssemblers.Count.ToString());
+            Alarms.info("");
+            Alarms.info("Cleared: " + countClear.ToString());
+            calculateCount();
+
+            minComponents.Clear();
+            minResources.Clear();
+
+
+            if (!reReadConfig(ResourcesTag, minResources)) Alarms.warn("There is no " + ResourcesTag + " screen");
+            if (!reReadConfig(ComponentsTag, minComponents)) Alarms.warn("There is no " + ComponentsTag + " screen");
+            if (!reReadConfig(AmmoTag, minComponents)) Alarms.warn("There is no " + AmmoTag + " screen");
+
+            if (minComponents.Count > 0)
+            {
+                calculateQueueCount();
+            }
+
+            var foundObjects = new HashSet<string>();
+            printCount("Resources ( raw / ingot ) :\n\n", ResourcesTag, BaseResoursesType, foundObjects);
+            printCount("", ComponentsTag, ProdResoursesType, foundObjects);
+            printCount("AMMO: \n\n", AmmoTag, ProdResoursesAMMO, foundObjects);
+
+            alarmNoObject(foundObjects, minResources);
+            alarmNoObject(foundObjects, minComponents);
+
+            checkRunGenerators();
+            foreach (var fc in factories) fc.check();
+
+            calculateVolume();
+            Alarms.next();
+        }
 
         public Program()
         {
-            Runtime.UpdateFrequency = UpdateFrequency.Update10;
+            Runtime.UpdateFrequency = UpdateFrequency.Update1;
             logger = new Log(this);
             Alarms = new Messaging(this);
 
             h2generatorEnable(false);
+
+            _scheduler = new Scheduler(this);
+            _scheduler.AddScheduledAction(recalcAll, 1);
+            _scheduler.AddScheduledAction(logger.printToSurfaces, 1);
+
             foreach (var fc in factories) fc.connect(this);
         }
 
@@ -247,6 +310,25 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
             count_assembled = new DefaultDictionary<string, DefaultDictionary<string, int>>();
         List<IMyTerminalBlock> blocks = new List<IMyTerminalBlock>();
 
+        public void doTransfer(IMyTerminalBlock block, MyInventoryItem item, IMyInventory sourse, string tag, HashSet<string> itemTypes, List<IMyCargoContainer> cargos, ref int moved)
+        {
+            if (!block.CustomName.Contains(tag) && itemTypes.Contains(item.Type.TypeId))
+            {
+                foreach (var cargo in cargos)
+                {
+                    var destination = cargo.GetInventory();
+                    if (!destination.IsFull && sourse.IsConnectedTo(destination))
+                    {
+                        // var transfered = sourse.TransferItemTo(destination, k, null, true);
+                        var transfered = sourse.TransferItemTo(destination, item, item.Amount);
+                        logger.write(">" + (transfered ? "Y " : "F ") +  getName(item.Type) + " " + block.CustomName + ">" + cargo.CustomName + " = " + transfered);
+                        moved++;
+                        if (transfered) break;
+                    }
+                }
+            }
+        }
+
         public void calculateCount()
         {
             MyInventoryItem item;
@@ -290,64 +372,10 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
                             if (item.Type.TypeId == AMMO && block is IMyLargeTurretBase) continue;
                             if (item.Type.TypeId == AMMO && block is IMyUserControllableGun) continue;
 
-                            if (!block.CustomName.Contains(ComponentsTag) && MainContainerTypes.Contains(item.Type.TypeId))
-                            {
-                                foreach (var cargo in componentCargos)
-                                {
-                                    destination = cargo.GetInventory();
-                                    if (!destination.IsFull && sourse.IsConnectedTo(destination))
-                                    {
-
-                                        logger.write("> " + getName(item.Type) + " " + block.CustomName + ">" + cargo.CustomName);
-                                        moved++;
-                                        if (sourse.TransferItemTo(destination, k, null, true)) break;
-                                    }
-                                }
-                            }
-                            if (!block.CustomName.Contains(ResourcesTag) && ResourcesContainerTypes.Contains(item.Type.TypeId))
-                            {
-                                foreach (var cargo in resourcesCargos)
-                                {
-                                    destination = cargo.GetInventory();
-                                    if (!destination.IsFull && sourse.IsConnectedTo(destination))
-                                    {
-
-                                        logger.write("> " + getName(item.Type) + " " + block.CustomName + ">" + cargo.CustomName);
-                                        moved++;
-                                        if (sourse.TransferItemTo(destination, k, null, true)) break;
-                                    }
-                                }
-                            }
-                            if (!block.CustomName.Contains(UserTag) && UserContainerTypes.Contains(item.Type.TypeId))
-                            {
-                                foreach (var cargo in userCargos)
-                                {
-                                    destination = cargo.GetInventory();
-                                    if (!destination.IsFull && sourse.IsConnectedTo(destination))
-                                    {
-
-                                        logger.write("> " + getName(item.Type) + " " + block.CustomName + ">" + cargo.CustomName);
-                                        moved++;
-                                        if (sourse.TransferItemTo(destination, k, null, true)) break;
-                                    }
-                                }
-                            }
-
-                            if (!block.CustomName.Contains(AmmoTag) && AmmoContainerTypes.Contains(item.Type.TypeId))
-                            {
-                                foreach (var cargo in ammoCargos)
-                                {
-                                    destination = cargo.GetInventory();
-                                    if (!destination.IsFull && sourse.IsConnectedTo(destination))
-                                    {
-                                        var transfered = sourse.TransferItemTo(destination, k, null, true);
-                                        logger.write("> " + getName(item.Type) + " " + block.CustomName + ">" + cargo.CustomName + " = " + transfered);
-                                        moved++;
-                                        if (transfered) break;
-                                    }
-                                }
-                            }
-
+                            doTransfer(block, item, sourse, ComponentsTag, MainContainerTypes, componentCargos, ref moved);
+                            doTransfer(block, item, sourse, ResourcesTag, ResourcesContainerTypes, resourcesCargos, ref moved);
+                            doTransfer(block, item, sourse, UserTag, UserContainerTypes, userCargos, ref moved);
+                            doTransfer(block, item, sourse, AmmoTag, AmmoContainerTypes, ammoCargos, ref moved);
                             //todo in one loop and ammo moving
                         }
                     }
@@ -467,6 +495,7 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
 
             if (!nowSeveralAssemblers) //stop all except one on all resources
             {
+                logger.write("Clear avail=" + availableAssemblers.Count + " Used:" + String.Join(",", assemblersInUse.Keys) + " Need:" + String.Join(",", queueResources.Keys));
                 foreach (var productors in assemblersInUse.Values)
                 {
                     Echo("3");
@@ -604,58 +633,7 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
 
         public void Main(string argument, UpdateType updateSource)
         {
-            iceAlarm = false;
-
-            if (h2generatorStarted)
-            {
-                Alarms.warn("H2 Engines is ON");
-            }
-            else
-            {
-
-            }
-
-            reScanAssemblers();
-            reScanObjectGroup(userCargos, UserTag); //todo move to one loop
-            reScanObjectGroup(resourcesCargos, ResourcesTag);
-            reScanObjectGroup(componentCargos, ComponentsTag);
-            reScanObjectGroup(ammoCargos, AmmoTag);
-
-            Alarms.info("Resources Cargo: " + resourcesCargos.Count.ToString());
-            Alarms.info("Component Cargo: " + componentCargos.Count.ToString());
-            Alarms.info("User Cargo: " + userCargos.Count.ToString());
-            Alarms.info("Ammo Cargo: " + ammoCargos.Count.ToString());
-            Alarms.info("Assemblers: " + allAssemblers.Count.ToString());
-            Alarms.info("");
-            Alarms.info("Cleared: " + countClear.ToString());
-            calculateCount();
-
-            minComponents.Clear();
-            minResources.Clear();
-
-
-            if (!reReadConfig(ResourcesTag, minResources)) Alarms.warn("There is no " + ResourcesTag + " screen");
-            if (!reReadConfig(ComponentsTag, minComponents)) Alarms.warn("There is no " + ComponentsTag + " screen");
-            if (!reReadConfig(AmmoTag, minComponents)) Alarms.warn("There is no " + AmmoTag + " screen");
-
-            if (minComponents.Count > 0)
-            {
-                calculateQueueCount();
-            }
-
-            var foundObjects = new HashSet<string>();
-            printCount("Resources ( raw / ingot ) :\n\n", ResourcesTag, BaseResoursesType, foundObjects);
-            printCount("", ComponentsTag, ProdResoursesType, foundObjects);
-            printCount("AMMO: \n\n", AmmoTag, ProdResoursesAMMO, foundObjects);
-
-            alarmNoObject(foundObjects, minResources);
-            alarmNoObject(foundObjects, minComponents);
-
-            checkRunGenerators();
-            foreach (var fc in factories) fc.check();
-
-            calculateVolume();
-            Alarms.next();
+            _scheduler.Update();
         }
 
         private void alarmNoObject(HashSet<string> foundObjects, Dictionary<string, int> minObj)
