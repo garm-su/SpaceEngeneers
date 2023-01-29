@@ -317,13 +317,15 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
                 foreach (var cargo in cargos)
                 {
                     var destination = cargo.GetInventory();
+                    var old_mass = destination.CurrentMass;
+
                     if (!destination.IsFull && sourse.IsConnectedTo(destination))
                     {
-                        // var transfered = sourse.TransferItemTo(destination, k, null, true);
-                        var transfered = sourse.TransferItemTo(destination, item, item.Amount);
-                        logger.write(">" + (transfered ? "Y " : "F ") +  getName(item.Type) + " " + block.CustomName + ">" + cargo.CustomName + " = " + transfered);
+                        var transfered = sourse.TransferItemTo(destination, item);
+                        var new_mass = cargo.GetInventory().CurrentMass;
+                        logger.write(">" + (transfered ? "Y" : "F") + (old_mass == new_mass ? "F " : "Y ") + getName(item.Type) + " " + block.CustomName + ">" + cargo.CustomName + " = " + transfered);
                         moved++;
-                        if (transfered) break;
+                        if (transfered && new_mass != old_mass) break;
                     }
                 }
             }
@@ -332,7 +334,7 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
         public void calculateCount()
         {
             MyInventoryItem item;
-            IMyInventory sourse, destination;
+            IMyInventory sourse;
             bool skip_move;
             int moved = 0;
 
