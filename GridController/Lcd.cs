@@ -342,7 +342,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
                 }
                 else
                 {
-                    Echo("Can't parse ini on " + display.CustomData);
+                    echoLine += "Can't parse ini on " + display.CustomData + "\n";
                 }
             }
 
@@ -358,7 +358,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
                 }
                 else
                 {
-                    Echo("Can't parse ini on " + cockpit.CustomData);
+                    echoLine += "Can't parse ini on " + cockpit.CustomData + "\n";
                 }
             }
         }

@@ -42,21 +42,25 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusRadar //@remove
 
         public string sendTargets()
         {
-            var result = new JsonObject("");
-            result.Add(new JsonPrimitive("Action", "Targets"));
-            JsonList targetJson = new JsonList("");
-            foreach(var t in targets)
+            if(targets.Count() > 0)
             {
-                var tgt = new JsonObject(t.EntityId);
-                tgt.Add(new JsonPrimitive("Type", gridType(t.Type)));
-                tgt.Add(new JsonPrimitive("Position", t.Position.ToString()));
-                tgt.Add(new JsonPrimitive("Velocity", t.Velocity.Length().ToString()));
-                targetJson.Add(tgt);
+                var result = new JsonObject("");
+                result.Add(new JsonPrimitive("Action", "Targets"));
+                JsonList targetJson = new JsonList("");
+                foreach(var t in targets)
+                {
+                    var tgt = new JsonObject(t.EntityId.ToString());
+                    tgt.Add(new JsonPrimitive("Type", gridType(t.Type)));
+                    tgt.Add(new JsonPrimitive("Position", t.Position.ToString()));
+                    tgt.Add(new JsonPrimitive("Velocity", t.Velocity.Length().ToString()));
+                    targetJson.Add(tgt);
+                }
+                result.Add(targetJson);
+                echoLine += "Targets: " + result.ToString(false) + "\n";
+                IGC.SendBroadcastMessage(commandChannelTag, result.ToString(false));
+                return result.ToString(false);
             }
-            result.Add(targetJson);
-            Echo("Targets: " + result.ToString(false));
-            IGC.SendBroadcastMessage(commandChannelTag, result.ToString(false));
-            return result.ToString(false);
+            return "";
         }
 
         public class gridPosition
@@ -342,7 +346,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusRadar //@remove
             targets.Clear();
             targets = updateLocalTargets();
 
-
+            sendTargets();
             //return targets;
 
             //todo: get json targets from net to string networkTargets

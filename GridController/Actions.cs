@@ -139,7 +139,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusActions //@remove
                     {
                         var item = items[k];
                         var resourceName = getName(item.Type);
-                        Echo(resourceName + " " + dictionary.ContainsKey(resourceName));
+                        echoLine += resourceName + " " + dictionary.ContainsKey(resourceName) + "\n";
                         if (dictionary.ContainsKey(resourceName) && dictionary[resourceName] > 0)
                         {
                             var countToMove = Math.Min(dictionary[resourceName], (int)item.Amount);
@@ -240,7 +240,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusActions //@remove
             int newSpeed;
             if (!Int32.TryParse(v, out newSpeed))
             {
-                Echo("Wrong int " + v);
+                echoLine += "Wrong int " + v + "\n";
                 return;
             }
 

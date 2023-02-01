@@ -61,7 +61,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
         public string gridType(MyDetectedEntityType type)
         {
             var typeStrList = new List<string>{"None","Unknown","SmallGrid","LargeGrid","CharacterHuman","CharacterOther","FloatingObject","Asteroid","Planet","Meteor","Missile"};
-            return typeStrList[((int)type) - 1];
+            return typeStrList[(int)type];
         }
 
         public void setAdditionalStatus(String s)
@@ -171,7 +171,6 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
                 }
                 gravityFactor = currentControl.GetNaturalGravity().Length();
                 thrustersLoad = getThrusterLoad(false);
-                Echo(thrustersLoad.ToString());
             }
             if (destroyedAmount > 0)
             {

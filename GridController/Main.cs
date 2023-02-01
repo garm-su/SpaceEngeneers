@@ -39,6 +39,8 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
         string dmg = "DAMAGED: ";
         string constuct = "CNSTRCT: ";
         string hud = " :HUD";
+        string echoLine = "";
+        string alertLine = "";
 
 
         //---------------------------- grid status info ----------------------------------
@@ -178,6 +180,9 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
             surface.FontSize = 1.2f;
             surface.BackgroundColor = new Color(0, 5, 0);
             surface.WriteText(result);
+            Echo(result);
+            Echo(echoLine);
+            echoLine = "";
         }
 
         public void sendStatus()
@@ -224,7 +229,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
                                 }
                                 break;
                             case "TB":
-                                Echo("TB");
+                                echoLine += "TB\n";
                                 var tbs = new List<IMyTimerBlock>();
                                 reScanObjectExactLocal(tbs, name);
                                 tbs.ForEach(tb => tb.Trigger());
@@ -309,7 +314,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
             _scheduler.AddScheduledAction(_aligner.Aligment, 50);
             _scheduler.AddScheduledAction(_aligner.gyroJoin, 0.1);
 
-            Echo("Started");
+            echoLine +="Started\n";
         }
 
         public void remoteTimerBlock(string gridName, string tbName)
@@ -359,19 +364,19 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
                     break;
                 case "locked":
                     lockedState = true;
-                    Echo("Grid is locked");
+                    echoLine += "Grid is locked\n";
                     break;
                 case "unlocked":
                     lockedState = false;
-                    Echo("Manual override lock status");
+                    echoLine += "Manual override lock status\n";
                     break;
                 case "fix":
                     saveGridState(update: true);
-                    Echo("Grid state saved");
+                    echoLine += "Grid state saved\n";
                     break;
                 case "showDmg":
                     showDmg = (bool)(props[1] == "true");
-                    Echo("Show DMG on HUD set to:" + showDmg.ToString());
+                    echoLine += "Show DMG on HUD set to:" + showDmg.ToString() + "\n";
                     break;
                 case "alignGravity":
                     _aligner.direction = null;
