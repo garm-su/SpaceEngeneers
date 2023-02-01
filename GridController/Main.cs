@@ -181,6 +181,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
             surface.BackgroundColor = new Color(0, 5, 0);
             surface.WriteText(result);
             Echo(result);
+            Echo(showConfig());
             Echo(echoLine);
             echoLine = "";
         }
@@ -375,7 +376,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
                     echoLine += "Grid state saved\n";
                     break;
                 case "showDmg":
-                    showDmg = (bool)(props[1] == "true");
+                    showDmg = (bool)(props[1] == "on");
                     echoLine += "Show DMG on HUD set to:" + showDmg.ToString() + "\n";
                     break;
                 case "alignGravity":
@@ -388,6 +389,24 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
                 case "remoteTimerBlock":
                     remoteTimerBlock(props[1], props[2]);
                     break;
+				case "autolock":
+					autoLock = !autoLock;
+                    isSearching = autoLock;
+					break;
+				case "autoaim":
+					autoAim = !autoAim;
+					break;
+				case "lock":
+					isSearching = true;
+					echoLine += "Locking target...\n";
+					break;
+				case "release":
+					lockedTarget = new MyDetectedEntityInfo();
+					echoLine += "Target released\n";
+					break;
+				case "detectAll":
+					detectAll = !detectAll;
+					break;
                 case "mapScaleUp":
                     if (mapRange < 1000)
                     {

@@ -33,3 +33,10 @@ remoteTimerBlock,#gridName#,#tb#
 [RADAR] - LCD Tag
 mapScaleUp
 mapScaleDown
+
+//locking
+lock - lock new target
+release - release locked target
+autolock - infinite repeate locking
+autoaim - align to locked target shooting direction
+detectAll - switch locking mode (all/enemies)

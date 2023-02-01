@@ -30,6 +30,8 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
         public List<IMySensorBlock> gridSensors = new List<IMySensorBlock>();
         List<IMyPowerProducer> gridGasEngines = new List<IMyPowerProducer>();
         List<IMyReactor> gridReactors = new List<IMyReactor>();
+        List<IMyCameraBlock> aimCams = new List<IMyCameraBlock>();
+        List<IMyUserControllableGun> guns = new List<IMyUserControllableGun>();    
 
         public string additionalStatus = "";
 
@@ -45,11 +47,20 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
         public List<string> gridDestroyedBlocks = new List<string>();
         public Dictionary<string, int> gridInventory = new Dictionary<string, int>();
         public List<MyDetectedEntityInfo> targets = new List<MyDetectedEntityInfo>();
+        public MyDetectedEntityInfo lockedTarget;
 
         public bool gridStateSaved = false;
         public bool lockedState = false;
         public bool hasGasFueledBlocks = false;
         public bool hasReactors = false;
+        public bool autoLock = false;
+        public bool autoAim = false;
+        public bool isSearching = false;
+        public bool detectAll = true;
+        public bool targetLost = false;
+        public double scanRange = 1000f;
+        public double timeUnit = 1/6; //default;
+        public double maxSpeedValue = 150f;    
 
         public Dictionary<String, String> BaseStatus = new Dictionary<String, String>();
 
@@ -58,6 +69,19 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
             return Me.CubeGrid.IsStatic ? -1 : (int)Me.CubeGrid.GridSizeEnum;
         }
 
+        public string showConfig()
+        {
+            string result = "Current state:\n";
+            result += "Map range:" + mapRange.ToString() + "\n";
+            result += "Show damage:" + showDmg.ToString() + "\n";
+            result += "Check destroyed:" + checkDestroyedBlocks.ToString() + "\n";
+            result += "Auto Lock:" + autoLock.ToString() + "\n";
+            result += "Auto Aim:" + autoAim.ToString() + "\n";
+            result += "Lock All:" + detectAll.ToString() + "\n";
+            result += "Loking target:" + isSearching.ToString() + "\n";            
+            return result;
+
+        }
         public string gridType(MyDetectedEntityType type)
         {
             var typeStrList = new List<string>{"None","Unknown","SmallGrid","LargeGrid","CharacterHuman","CharacterOther","FloatingObject","Asteroid","Planet","Meteor","Missile"};
@@ -150,6 +174,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
         public void updateGridInfo()
         {
             saveGridState();
+            setupCameras();
             gridCharge = getGridBatteryCharge();
             gridGas = getGridGasAmount("Hydrogen");
             gridLoad = getGridUsedCargoSpace();

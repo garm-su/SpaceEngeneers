@@ -289,11 +289,64 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusRadar //@remove
             return result;
         }
 
-        public List<MyDetectedEntityInfo> getScannedTargets()
+        public void setupCameras()
         {
-            List<MyDetectedEntityInfo> result = new List<MyDetectedEntityInfo>();
+            reScanObjectsLocal(aimCams);
+            foreach(var cam in aimCams)
+            {
+                cam.EnableRaycast = true;
+            }
+        }
+        public void getScannedTargets()
+        {
+            if (!lockedTarget.IsEmpty() && !isSearching)
+            {
+                //raycast to predicted position
+                //if target not found? - try N times with random deviations then breakLock
+                //if 
+                string targetInfo = "Target locked\n";
+                targetInfo = targetInfo + "Type:" + lockedTarget.Type.ToString() + "\n";
+                targetInfo = targetInfo + "Position:" + lockedTarget.Position.ToString() + "\n";
+                targetInfo = targetInfo + "Velocity:" + lockedTarget.Velocity.Length().ToString() + "\n";
+                echoLine += targetInfo;
+            }
+            else
+            {
+                if (isSearching) 
+                {
+                    //raycast front 1km all aim cameras
+                    foreach(var cam in aimCams)
+                    {
+                        if (cam.CanScan(scanRange) && cam.TimeUntilScan(scanRange) == 0)
+                        {
+                            MyDetectedEntityInfo t = cam.Raycast(scanRange);
+                            if(t.IsEmpty())
+                            {
+                                lockedTarget = new MyDetectedEntityInfo(); //todo - logic
+                                continue;
+                            }
+                            if(t.Type == MyDetectedEntityType.SmallGrid || t.Type == MyDetectedEntityType.LargeGrid || t.Type == MyDetectedEntityType.CharacterHuman || t.Type == MyDetectedEntityType.CharacterOther)
+                            {
+                                if (detectAll || t.Relationship == MyRelationsBetweenPlayerAndBlock.Enemies)
+                                {
+                                    lockedTarget = t;
+                                    if (!autoLock)
+                                    {
+                                        isSearching = false;
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if (!lockedTarget.IsEmpty())
+            {
+                //predict next position
+                //timeUnit
 
-            return result;
+            }
         }
         public List<MyDetectedEntityInfo> getSensorsTargets()
         {
@@ -320,7 +373,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusRadar //@remove
         {
             List<MyDetectedEntityInfo> result = getTurretsTargets();
             List<MyDetectedEntityInfo> localSens = getSensorsTargets();
-            List<MyDetectedEntityInfo> localScan = getScannedTargets(); //todo
+            getScannedTargets();
 
             foreach (var elem in localSens)
             {
@@ -329,13 +382,9 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusRadar //@remove
                     result.Add(elem);
                 }
             }
-
-            foreach (var elem in localScan)
+            if (!result.Any(n => n.EntityId == lockedTarget.EntityId))
             {
-                if (!result.Any(n => n.EntityId == elem.EntityId))
-                {
-                    result.Add(elem);
-                }
+                result.Add(lockedTarget);
             }
 
             return result;
@@ -346,11 +395,8 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusRadar //@remove
             targets.Clear();
             targets = updateLocalTargets();
 
-            sendTargets();
-            //return targets;
-
-            //todo: get json targets from net to string networkTargets
-            //send local targets to network channel
+            //get targets from network
+            sendTargets(); //send local targets to network
         }
 
     }  //@remove

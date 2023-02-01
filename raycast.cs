@@ -91,26 +91,21 @@ void Main(string arg)
 			{
 				case "autolock":
 					autoLock = (param[1] == "on");
-				break;
-
+					break;
 				case "autoaim":
 					autoAim = (param[1] == "on");
-				break;
-
+					break;
 				case "detectAll":
 					detectAll = (param[1] == "on");
-				break;
-
+					break;
 				case "lock":
 					isSearching = true;
 					Echo("Locking target...");
-				break;
-
+					break;
 				case "release":
 					lockedTarget = new MyDetectedEntityInfo();
 					Echo("Target released");
-				break;
-
+					break;
 				default:
 					Echo("Unknown command - skipped");
 				break;
