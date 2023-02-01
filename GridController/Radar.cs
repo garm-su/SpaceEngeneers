@@ -299,22 +299,19 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusRadar //@remove
         }
         public void getScannedTargets()
         {
-            if (!lockedTarget.IsEmpty() && !isSearching)
+            if (!lockedTarget.IsEmpty() && (lockedTarget.EntityId != 0) && !isSearching)
             {
-                //raycast to predicted position
+                //todo: raycast to predicted position
                 //if target not found? - try N times with random deviations then breakLock
-                //if 
                 string targetInfo = "Target locked\n";
                 targetInfo = targetInfo + "Type:" + lockedTarget.Type.ToString() + "\n";
                 targetInfo = targetInfo + "Position:" + lockedTarget.Position.ToString() + "\n";
                 targetInfo = targetInfo + "Velocity:" + lockedTarget.Velocity.Length().ToString() + "\n";
-                echoLine += targetInfo;
             }
             else
             {
                 if (isSearching) 
                 {
-                    //raycast front 1km all aim cameras
                     foreach(var cam in aimCams)
                     {
                         if (cam.CanScan(scanRange) && cam.TimeUntilScan(scanRange) == 0)
@@ -322,7 +319,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusRadar //@remove
                             MyDetectedEntityInfo t = cam.Raycast(scanRange);
                             if(t.IsEmpty())
                             {
-                                lockedTarget = new MyDetectedEntityInfo(); //todo - logic
+                                //todo: if target not found
                                 continue;
                             }
                             if(t.Type == MyDetectedEntityType.SmallGrid || t.Type == MyDetectedEntityType.LargeGrid || t.Type == MyDetectedEntityType.CharacterHuman || t.Type == MyDetectedEntityType.CharacterOther)
@@ -382,7 +379,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusRadar //@remove
                     result.Add(elem);
                 }
             }
-            if (!result.Any(n => n.EntityId == lockedTarget.EntityId))
+            if ((lockedTarget.EntityId!=0) && (!result.Any(n => n.EntityId == lockedTarget.EntityId)))
             {
                 result.Add(lockedTarget);
             }
