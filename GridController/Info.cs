@@ -58,6 +58,12 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
             return Me.CubeGrid.IsStatic ? -1 : (int)Me.CubeGrid.GridSizeEnum;
         }
 
+        public string gridType(MyDetectedEntityType type)
+        {
+            var typeStrList = new List<string>{"None","Unknown","SmallGrid","LargeGrid","CharacterHuman","CharacterOther","FloatingObject","Asteroid","Planet","Meteor","Missile"};
+            return typeStrList[((int)type) - 1];
+        }
+
         public void setAdditionalStatus(String s)
         {
             additionalStatus = s;

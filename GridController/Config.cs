@@ -46,6 +46,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusConfig //@remove
         public string commandChannelTag = "RDOCommandChannel";
 
         public bool checkDestroyedBlocks = true;
+        public bool showDmg = true;
 
         public new int LogMaxCount = 100;
 

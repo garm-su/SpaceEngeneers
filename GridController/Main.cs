@@ -271,8 +271,12 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
 
         }
 
-        public void hudDmg()
+        public void hudDmg(bool flag)
         {
+            if(!flag)
+            {
+                return;
+            }
             var blocks = new List<IMyTerminalBlock>();
             reScanObjectsLocal(blocks);
             foreach (var block in blocks)
@@ -298,7 +302,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
             _scheduler.AddScheduledAction(sendStatus, 1);
             _scheduler.AddScheduledAction(logger.printToSurfaces, 1);
 
-            _scheduler.AddScheduledAction(hudDmg, 0.2);
+            _scheduler.AddScheduledAction(() => hudDmg(showDmg), 0.2);
 
             _aligner = new GyroAligner(this, controller);
 
@@ -364,6 +368,10 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
                 case "fix":
                     saveGridState(update: true);
                     Echo("Grid state saved");
+                    break;
+                case "showDmg":
+                    showDmg = (bool)(props[1] == "true");
+                    Echo("Show DMG on HUD set to:" + showDmg.ToString());
                     break;
                 case "alignGravity":
                     _aligner.direction = null;
