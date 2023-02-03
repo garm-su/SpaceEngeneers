@@ -28,10 +28,10 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
         public List<IMyShipController> gridControls = new List<IMyShipController>();
         public IMyShipController currentControl;
         public List<IMySensorBlock> gridSensors = new List<IMySensorBlock>();
-        List<IMyPowerProducer> gridGasEngines = new List<IMyPowerProducer>();
-        List<IMyReactor> gridReactors = new List<IMyReactor>();
-        List<IMyCameraBlock> aimCams = new List<IMyCameraBlock>();
-        List<IMyUserControllableGun> guns = new List<IMyUserControllableGun>();    
+        public List<IMyPowerProducer> gridGasEngines = new List<IMyPowerProducer>();
+        public List<IMyReactor> gridReactors = new List<IMyReactor>();
+        public List<IMyCameraBlock> aimCams = new List<IMyCameraBlock>();
+        public List<IMyUserControllableGun> guns = new List<IMyUserControllableGun>();    
 
         public string additionalStatus = "";
 
