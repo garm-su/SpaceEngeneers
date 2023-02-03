@@ -50,6 +50,8 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusConfig //@remove
 
         public new int LogMaxCount = 100;
 
+        public string echoLine = "";
+
 
         //alert tresholds
         public double energyTreshold = 0.25; //% of max capacity, default - 25%

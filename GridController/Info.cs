@@ -174,7 +174,6 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
         public void updateGridInfo()
         {
             saveGridState();
-            setupCameras();
             gridCharge = getGridBatteryCharge();
             gridGas = getGridGasAmount("Hydrogen");
             gridLoad = getGridUsedCargoSpace();

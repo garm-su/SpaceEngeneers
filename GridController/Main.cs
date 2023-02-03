@@ -39,7 +39,6 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
         string dmg = "DAMAGED: ";
         string constuct = "CNSTRCT: ";
         string hud = " :HUD";
-        string echoLine = "";
         string alertLine = "";
 
 
@@ -302,6 +301,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
 
             _scheduler.AddScheduledAction(updateGridInfo, 1);
             _scheduler.AddScheduledAction(checkMaxSpeed, 10);
+            _scheduler.AddScheduledAction(setupCameras, 1);
             _scheduler.AddScheduledAction(updateTargets, 10);
             _scheduler.AddScheduledAction(lcdDraw, 0.5);
             _scheduler.AddScheduledAction(() => drawMap(mapRange), 6);
