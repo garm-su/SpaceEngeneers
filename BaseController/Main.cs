@@ -18,6 +18,7 @@ using Sandbox.ModAPI.Contracts;
 using Sandbox.Game;
 using Sandbox.Common;
 using Sandbox.Common.ObjectBuilders;
+using VRage.Game.ModAPI.Ingame.Utilities;
 // Change this namespace for each script you create.
 namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
 { //@remove
@@ -30,8 +31,10 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
 
         string
             SKIP = "[SKIP]",
+            Components = "Components",
             ComponentsTag = "[Components]",
             UserTag = "[User]", //todo: money here
+            Resources = "Resources",
             ResourcesTag = "[Resources]",
             QueueTag = "[QUEUE]",
 
@@ -137,13 +140,21 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
             Alarms.info("Cleared: " + countClear.ToString());
             calculateCount();
 
-            minComponents.Clear();
-            minResources.Clear();
+            var ini = new MyIni();
+            ini.TryParse(Me.CustomData);            
+            
+            var keys = new List<MyIniKey>();
+            ini.GetKeys(Components, keys);
+            minComponents.Clear();            
+            keys.ForEach(key => minComponents[key.Name] = ini.Get(key).ToInt32());
 
+            ini.GetKeys(Resources, keys);
+            minResources.Clear();            
+            keys.ForEach(key => minResources[key.Name] = ini.Get(key).ToInt32());
 
-            if (!reReadConfig(ResourcesTag, minResources)) Alarms.warn("There is no " + ResourcesTag + " screen");
-            if (!reReadConfig(ComponentsTag, minComponents)) Alarms.warn("There is no " + ComponentsTag + " screen");
-            if (!reReadConfig(AmmoTag, minComponents)) Alarms.warn("There is no " + AmmoTag + " screen");
+            // if (!reReadConfig(ResourcesTag, minResources)) Alarms.warn("There is no " + ResourcesTag + " screen");
+            // if (!reReadConfig(ComponentsTag, minComponents)) Alarms.warn("There is no " + ComponentsTag + " screen");
+            // if (!reReadConfig(AmmoTag, minComponents)) Alarms.warn("There is no " + AmmoTag + " screen");
 
             if (minComponents.Count > 0)
             {
@@ -387,12 +398,6 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
         }
         public void printCount(string panelTextInit, string terminalName, List<String> resoursesType, HashSet<string> foundObjects)
         {
-            IMyTextSurface surface = GridTerminalSystem.GetBlockWithName(terminalName) as IMyTextSurface;
-            if (surface == null)
-            {
-                Alarms.warn("There is no surface " + terminalName);
-                return;
-            }
             bool found;
             double count;
             int val;
@@ -461,7 +466,6 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
                     }
                 }
             }
-            surface.WriteText(panelText);
         }
 
 
@@ -546,28 +550,6 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
             {
                 surface.WriteText(queued);
             }
-        }
-
-        public bool reReadConfig(String name, Dictionary<string, int> res)
-        {
-            var config = GridTerminalSystem.GetBlockWithName(name);
-            if (config == null) return false;
-
-            foreach (String row in config.CustomData.Split('\n'))
-            {
-                if (row.Contains(":"))
-                {
-                    var tup = row.Split(':');
-                    if (tup.Length != 2)
-                    {
-                        Echo("Err: " + row);
-                        continue;
-                    }
-                    res[tup[0].Trim()] = Convert.ToInt32(tup[1].Trim());
-                }
-            }
-
-            return true;
         }
 
         private String getPercentVolume(String name, List<IMyCargoContainer> containers)
