@@ -52,6 +52,8 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusConfig //@remove
 
         public string echoLine = "";
 
+        public GyroAligner _aligner;
+
 
         //alert tresholds
         public double energyTreshold = 0.25; //% of max capacity, default - 25%

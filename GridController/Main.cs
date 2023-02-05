@@ -34,7 +34,6 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
         int iPos = 1;
         int iStep = 1;
         Scheduler _scheduler;
-        GyroAligner _aligner;
 
         string dmg = "DAMAGED: ";
         string constuct = "CNSTRCT: ";
@@ -171,12 +170,13 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
             string result = "Grid Controller v" + Ver;
             sb[iPos] = '|';
             result += "\nworking " + sb.ToString() + "\n";
-            var surface = Me.GetSurface(0);
+            var surface = Me.GetSurface(1);
             surface.TextPadding = 30f;
             surface.ContentType = ContentType.TEXT_AND_IMAGE;
+            surface.Alignment = TextAlignment.CENTER;
             surface.Font = "DEBUG";
             surface.FontColor = new Color(0, 200, 0);
-            surface.FontSize = 1.2f;
+            surface.FontSize = 3f;
             surface.BackgroundColor = new Color(0, 5, 0);
             surface.WriteText(result);
             Echo(result);
@@ -379,9 +379,9 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
                     showDmg = (bool)(props[1] == "on");
                     echoLine += "Show DMG on HUD set to:" + showDmg.ToString() + "\n";
                     break;
-                case "alignGravity":
+                case "alignGravityToggle":
                     _aligner.direction = null;
-                    _aligner.Override(true);
+                    _aligner.Toggle(props[1]);
                     break;
                 case "alignStop":
                     _aligner.Override(false);

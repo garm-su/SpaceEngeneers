@@ -22,7 +22,12 @@ maxSpeed,50
 saveConfig
 
 //start align to gravity
-alignGravity
+alignGravityToggle,top
+alignGravityToggle,bottom
+alignGravityToggle,left
+alignGravityToggle,right
+alignGravityToggle,forward
+alignGravityToggle,backward
 //stop align to gravity
 alignStop
 

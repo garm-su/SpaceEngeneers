@@ -263,6 +263,9 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
                     case "AimInfo":
                         //result += lcdAimModes(letters);
                         break;
+                    case "RC":
+                        result.Add(_aligner.ToString());
+                        break;
                     case "Ore":
                         result.Add(lcdInventoryInfo(gridInventory, letters, "Ore"));
                         break;

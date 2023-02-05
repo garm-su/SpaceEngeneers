@@ -83,7 +83,7 @@ public class Gyroscope
     }
 }
 
-internal class GyroAligner
+public class GyroAligner
 {
     private IMyShipController controller;
     private Program parent;
@@ -93,12 +93,18 @@ internal class GyroAligner
     internal float YawSensitivity { get; set; } = 1;
 
     public Vector3D? direction { get; set; } = null;
+    public string orientation = "top";
 
     internal List<Gyroscope> gyros = new List<Gyroscope>();
     internal HashSet<long> gyroIds = new HashSet<long>();
 
     internal bool active = false;
     string controllerName;
+
+    public override string ToString()
+    {
+        return "Active: " + (active ? orientation : "none");
+    }
 
     //add gyros by Rescan
     public void gyroJoin()
@@ -131,10 +137,20 @@ internal class GyroAligner
         gyroJoin();
     }
 
-    internal void Override(bool is_script_controlling)
+    internal void Override(bool new_active)
     {
-        active = is_script_controlling;
+        active = new_active;
         foreach (var gyro in gyros) gyro.Override(active);
+    }
+    internal void Toggle(string new_orientation)
+    {
+        if (new_orientation != "" && orientation != new_orientation)
+        {
+            orientation = new_orientation;
+            Override(true);
+            return;
+        }
+        Override(!active);
     }
 
 
@@ -148,13 +164,43 @@ internal class GyroAligner
             (Vector3D)direction - controller.CubeGrid.GridIntegerToWorld(controller.Position)
         );
 
-        float pitch = (float)orient.Dot(controller.WorldMatrix.Backward) * PitchSensitivity + controller.RotationIndicator.X * PitchSensitivity;
-        float roll = (float)orient.Dot(controller.WorldMatrix.Left) * RollSensitivity;
-        float yaw = controller.RotationIndicator.Y * YawSensitivity;
-        //todo: set orientation vector
+        float pitch = 0, roll = 0, yaw = 0;
+
+        switch (orientation)
+        {
+            case "bottom":
+                pitch = (float)orient.Dot(controller.WorldMatrix.Backward);
+                roll = (float)orient.Dot(controller.WorldMatrix.Left);
+                break;
+            case "top":
+                pitch = (float)orient.Dot(controller.WorldMatrix.Forward);
+                roll = (float)orient.Dot(controller.WorldMatrix.Right);
+                break;
+            case "forward":
+                pitch = (float)orient.Dot(controller.WorldMatrix.Down);
+                yaw = (float)orient.Dot(controller.WorldMatrix.Right);
+                break;
+            case "backward":
+                pitch = (float)orient.Dot(controller.WorldMatrix.Up);
+                yaw = (float)orient.Dot(controller.WorldMatrix.Left);
+                break;
+            case "left":
+                roll = (float)orient.Dot(controller.WorldMatrix.Up);
+                yaw = (float)orient.Dot(controller.WorldMatrix.Forward);
+                break;
+            case "right":
+                roll = (float)orient.Dot(controller.WorldMatrix.Down);
+                yaw = (float)orient.Dot(controller.WorldMatrix.Backward);
+                break;
+            default:
+                return;
+        }
+
+        pitch += controller.RotationIndicator.X;
+        roll += controller.RollIndicator;
+        yaw += controller.RotationIndicator.Y;
 
         float[] controls = new float[] { pitch, yaw, roll, -pitch, -yaw, -roll };
-
         foreach (Gyroscope g in gyros)
             g.SetRotation(controls);
     }
