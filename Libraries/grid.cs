@@ -16,12 +16,15 @@ using SpaceEngineers.Game.ModAPI.Ingame;
 using VRage.Game.ObjectBuilders.Definitions;
 using VRage.Game.ModAPI.Ingame.Utilities;
 using LitJson;
+using static SpaceEngineers.UWBlockPrograms.LogLibrary.Program;
 
 // Change this namespace for each script you create.
 namespace SpaceEngineers.UWBlockPrograms.Grid //@remove
 { //@remove
     public class Program : Helpers.Program //@remove
     { //@remove
+
+        public Log logger;  //@remove
         public void reReadConfig(Dictionary<string, int> minResourses, String CustomData, String group)
         {
             var ini = new MyIni();
@@ -144,9 +147,30 @@ namespace SpaceEngineers.UWBlockPrograms.Grid //@remove
             return result;
         }
 
+        public List<string> getUnlinkedBlocks(string connectTo)
+        {
+            var result = new List<string>();
+            var baseBlock = new List<IMyCargoContainer>();
+            reScanObjectExactLocal(baseBlock, connectTo);
+            if (baseBlock.Count > 0)
+            {
+                var source = baseBlock[0].GetInventory();
+                var scanBlocks = new List<IMyTerminalBlock>();
+                reScanObjectsLocal(scanBlocks, blck => blck.HasInventory && !(blck is IMyCockpit));
+                //todo Hydrogen engines - don't work with getinventory (
+                foreach (var sb in scanBlocks)
+                {
+                    if (!source.IsConnectedTo(sb.GetInventory()))
+                    {
+                        result.Add(sb.DisplayNameText + " " + sb.GetType().ToString());
+                    }
+                }
+            }
+            return result;
+        }
         public List<string> getDamagedBlocks()
         {
-            List<string> result = new List<string>();
+            var result = new List<string>();
             var grid = new List<IMyTerminalBlock>();
             reScanObjectsLocal(grid);
             foreach (var terminalBlock in grid)

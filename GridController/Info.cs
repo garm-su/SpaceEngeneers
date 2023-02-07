@@ -44,6 +44,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
         public double damagedBlockRatio = 0;
         public double destroyedAmount = 0;
         public List<string> gridDamagedBlocks = new List<string>();
+        public List<string> gridUnlinkedBlocks = new List<string>();
         public List<string> gridDestroyedBlocks = new List<string>();
         public Dictionary<string, int> gridInventory = new Dictionary<string, int>();
         public List<MyDetectedEntityInfo> targets = new List<MyDetectedEntityInfo>();
@@ -171,6 +172,10 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
             return used / space;
         }
 
+        public void updateUnlinked()
+        {
+            gridUnlinkedBlocks = getUnlinkedBlocks(cargoAlignment);
+        }
         public void updateGridInfo()
         {
             saveGridState();

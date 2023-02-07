@@ -150,9 +150,16 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusLcd //@remove
             else
             {
                 bool flag = false;
+                
+                if (gridUnlinkedBlocks.Count() != 0)
+                {
+                    result = "Unlnked\n" + string.Join("\n", gridUnlinkedBlocks);
+                    flag = true;
+                }
                 if (gridDamagedBlocks.Count() != 0)
                 {
-                    result = "Damaged\n" + string.Join("\n", gridDamagedBlocks);
+                    if (flag) result += "\n";
+                    result += "Damaged\n" + string.Join("\n", gridDamagedBlocks);
                     flag = true;
                 }
                 if (gridDestroyedBlocks.Count() != 0)

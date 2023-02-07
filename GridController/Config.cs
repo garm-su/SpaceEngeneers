@@ -44,6 +44,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusConfig //@remove
 
         public string statusChannelTag = "RDOStatusChannel";
         public string commandChannelTag = "RDOCommandChannel";
+        public string cargoAlignment = "[cargoAlignment]";
 
         public bool checkDestroyedBlocks = true;
         public bool showDmg = true;
@@ -97,6 +98,8 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusConfig //@remove
             InitValue(ini.Get(ConfSection, "minPercentSpeed"), ref minPercentSpeed);
             InitValue(ini.Get(ConfSection, "controller"), ref controller);
 
+            InitValue(ini.Get(ConfSection, "cargoAlignment"), ref cargoAlignment);
+
         }
 
         public void saveConfig()
@@ -126,6 +129,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusConfig //@remove
             ini.Set(ConfSection, "decelerationDistance", decelerationDistance);
             ini.Set(ConfSection, "minPercentSpeed", minPercentSpeed);
             ini.Set(ConfSection, "controller", controller);
+            ini.Set(ConfSection, "cargoAlignment", cargoAlignment);
 
             Me.CustomData = ini.ToString();
         }

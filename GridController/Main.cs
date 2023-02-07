@@ -35,6 +35,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
         int iStep = 1;
         Scheduler _scheduler;
 
+        string link = "UNLINKED: ";
         string dmg = "DAMAGED: ";
         string constuct = "CNSTRCT: ";
         string hud = " :HUD";
@@ -103,6 +104,19 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
                 curEvent.Add(new JsonPrimitive("Event", "lowAmmo"));
             }
 
+            if (gridUnlinkedBlocks.Count() > 0)
+            {
+                statusMessage = "orange";
+                var curEvent = new JsonObject("");
+                JsonList unlinkedJson = new JsonList("Blocks"); ;
+                statusEvents.Add(curEvent);
+                curEvent.Add(new JsonPrimitive("Event", "unlinked"));
+                foreach (var b in gridUnlinkedBlocks)
+                {
+                    unlinkedJson.Add(new JsonPrimitive("", b));
+                }
+                curEvent.Add(unlinkedJson);
+            }
             if (gridDamagedBlocks.Count() > 0)
             {
                 statusMessage = "orange";
@@ -251,9 +265,14 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
                 blck.CustomName = blck.CustomName.Substring(dmg.Length);
                 found = true;
             }
+            if (prefix != link && blck.CustomName.StartsWith(link))
+            {
+                blck.CustomName = blck.CustomName.Substring(link.Length);
+                found = true;
+            }
             if (prefix != constuct && blck.CustomName.StartsWith(constuct))
             {
-                blck.CustomName = blck.CustomName.Substring(dmg.Length);
+                blck.CustomName = blck.CustomName.Substring(constuct.Length);
                 found = true;
             }
             if (prefix == "")
@@ -278,16 +297,30 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
 
         public void hudDmg(bool flag)
         {
-            if(!flag)
+            if (!flag)
             {
                 return;
             }
+            IMyInventory source = null;
+            var baseBlock = new List<IMyCargoContainer>();
+            reScanObjectExactLocal(baseBlock, cargoAlignment);
+            if (baseBlock.Count > 0)
+            {
+                source = baseBlock[0].GetInventory();
+            }
+            var scanBlocks = new List<IMyTerminalBlock>();
+            reScanObjectsLocal(scanBlocks, blck => blck.HasInventory);
             var blocks = new List<IMyTerminalBlock>();
             reScanObjectsLocal(blocks);
             foreach (var block in blocks)
             {
                 IMySlimBlock slimblock = block.CubeGrid.GetCubeBlock(block.Position);
-                clearBlockName(block, slimblock.CurrentDamage > 0 ? dmg : slimblock.BuildIntegrity < slimblock.MaxIntegrity ? constuct : "");
+
+                clearBlockName(block,
+                    slimblock.CurrentDamage > 0 ? dmg :
+                    source != null && block.HasInventory && !source.IsConnectedTo(block.GetInventory()) ? link :
+                    slimblock.BuildIntegrity < slimblock.MaxIntegrity ? constuct :
+                "");
             }
         }
 
@@ -295,11 +328,13 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
         {
             loadConfig();
             logger = new Log(this);
+            logger.write("Inited");
             Runtime.UpdateFrequency = UpdateFrequency.Update1;
 
             _scheduler = new Scheduler(this);
 
             _scheduler.AddScheduledAction(updateGridInfo, 1);
+            _scheduler.AddScheduledAction(updateUnlinked, 0.1);
             _scheduler.AddScheduledAction(checkMaxSpeed, 10);
             _scheduler.AddScheduledAction(setupCameras, 1);
             _scheduler.AddScheduledAction(updateTargets, 10);
@@ -315,7 +350,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
             _scheduler.AddScheduledAction(_aligner.Aligment, 50);
             _scheduler.AddScheduledAction(_aligner.gyroJoin, 0.1);
 
-            echoLine +="Started\n";
+            echoLine += "Started\n";
         }
 
         public void remoteTimerBlock(string gridName, string tbName)
@@ -389,24 +424,24 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
                 case "remoteTimerBlock":
                     remoteTimerBlock(props[1], props[2]);
                     break;
-				case "autolock":
-					autoLock = !autoLock;
+                case "autolock":
+                    autoLock = !autoLock;
                     isSearching = autoLock;
-					break;
-				case "autoaim":
-					autoAim = !autoAim;
-					break;
-				case "lock":
-					isSearching = true;
-					echoLine += "Locking target...\n";
-					break;
-				case "release":
-					lockedTarget = new MyDetectedEntityInfo();
-					echoLine += "Target released\n";
-					break;
-				case "detectAll":
-					detectAll = !detectAll;
-					break;
+                    break;
+                case "autoaim":
+                    autoAim = !autoAim;
+                    break;
+                case "lock":
+                    isSearching = true;
+                    echoLine += "Locking target...\n";
+                    break;
+                case "release":
+                    lockedTarget = new MyDetectedEntityInfo();
+                    echoLine += "Target released\n";
+                    break;
+                case "detectAll":
+                    detectAll = !detectAll;
+                    break;
                 case "mapScaleUp":
                     if (mapRange < 1000)
                     {
