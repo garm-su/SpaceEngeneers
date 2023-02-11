@@ -318,7 +318,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
 
                 clearBlockName(block,
                     slimblock.CurrentDamage > 0 ? dmg :
-                    source != null && block.HasInventory && !source.IsConnectedTo(block.GetInventory()) ? link :
+                    source != null && block.HasInventory && unlinked.ContainsKey(block.GetId()) && unlinked[block.GetId()].check ? link :
                     slimblock.BuildIntegrity < slimblock.MaxIntegrity ? constuct :
                 "");
             }
@@ -334,7 +334,6 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
             _scheduler = new Scheduler(this);
 
             _scheduler.AddScheduledAction(updateGridInfo, 1);
-            _scheduler.AddScheduledAction(updateUnlinked, 0.1);
             _scheduler.AddScheduledAction(checkMaxSpeed, 10);
             _scheduler.AddScheduledAction(setupCameras, 1);
             _scheduler.AddScheduledAction(updateTargets, 10);

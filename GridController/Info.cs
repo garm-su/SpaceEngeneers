@@ -31,7 +31,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
         public List<IMyPowerProducer> gridGasEngines = new List<IMyPowerProducer>();
         public List<IMyReactor> gridReactors = new List<IMyReactor>();
         public List<IMyCameraBlock> aimCams = new List<IMyCameraBlock>();
-        public List<IMyUserControllableGun> guns = new List<IMyUserControllableGun>();    
+        public List<IMyUserControllableGun> guns = new List<IMyUserControllableGun>();
 
         public string additionalStatus = "";
 
@@ -60,8 +60,8 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
         public bool detectAll = true;
         public bool targetLost = false;
         public double scanRange = 1000f;
-        public double timeUnit = 1/6; //default;
-        public double maxSpeedValue = 150f;    
+        public double timeUnit = 1 / 6; //default;
+        public double maxSpeedValue = 150f;
 
         public Dictionary<String, String> BaseStatus = new Dictionary<String, String>();
 
@@ -79,13 +79,13 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
             result += "Auto Lock:" + autoLock.ToString() + "\n";
             result += "Auto Aim:" + autoAim.ToString() + "\n";
             result += "Lock All:" + detectAll.ToString() + "\n";
-            result += "Loking target:" + isSearching.ToString() + "\n";            
+            result += "Loking target:" + isSearching.ToString() + "\n";
             return result;
 
         }
         public string gridType(MyDetectedEntityType type)
         {
-            var typeStrList = new List<string>{"None","Unknown","SmallGrid","LargeGrid","CharacterHuman","CharacterOther","FloatingObject","Asteroid","Planet","Meteor","Missile"};
+            var typeStrList = new List<string> { "None", "Unknown", "SmallGrid", "LargeGrid", "CharacterHuman", "CharacterOther", "FloatingObject", "Asteroid", "Planet", "Meteor", "Missile" };
             return typeStrList[(int)type];
         }
 
@@ -172,14 +172,11 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
             return used / space;
         }
 
-        public void updateUnlinked()
-        {
-            gridUnlinkedBlocks = getUnlinkedBlocks(cargoAlignment);
-        }
         public void updateGridInfo()
         {
             saveGridState();
             gridCharge = getGridBatteryCharge();
+            gridUnlinkedBlocks = getUnlinkedBlocks(cargoAlignment);
             gridGas = getGridGasAmount("Hydrogen");
             gridLoad = getGridUsedCargoSpace();
             gridInventory = getGridInventory();

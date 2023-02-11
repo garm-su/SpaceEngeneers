@@ -21,10 +21,23 @@ using static SpaceEngineers.UWBlockPrograms.LogLibrary.Program;
 // Change this namespace for each script you create.
 namespace SpaceEngineers.UWBlockPrograms.Grid //@remove
 { //@remove
+    public class CB
+    {
+        public IMyTerminalBlock block;
+        public bool check;
+        public CB(IMyTerminalBlock block, bool check)
+        {
+            this.block = block;
+            this.check = check;
+        }
+    }
     public class Program : Helpers.Program //@remove
     { //@remove
 
         public Log logger;  //@remove
+
+        public Dictionary<long, CB> unlinked = new Dictionary<long, CB>();
+        public int unlinked_idx = 0;
         public void reReadConfig(Dictionary<string, int> minResourses, String CustomData, String group)
         {
             var ini = new MyIni();
@@ -149,24 +162,41 @@ namespace SpaceEngineers.UWBlockPrograms.Grid //@remove
 
         public List<string> getUnlinkedBlocks(string connectTo)
         {
-            var result = new List<string>();
             var baseBlock = new List<IMyCargoContainer>();
             reScanObjectExactLocal(baseBlock, connectTo);
-            if (baseBlock.Count > 0)
+            Echo("1");
+
+            if (baseBlock.Count == 0) return new List<string>();
+            Echo("2");
+            if (unlinked_idx >= unlinked.Count)
             {
-                var source = baseBlock[0].GetInventory();
+                Echo("3");
                 var scanBlocks = new List<IMyTerminalBlock>();
                 reScanObjectsLocal(scanBlocks, blck => blck.HasInventory && !(blck is IMyCockpit));
-                //todo Hydrogen engines - don't work with getinventory (
-                foreach (var sb in scanBlocks)
-                {
-                    if (!source.IsConnectedTo(sb.GetInventory()))
-                    {
-                        result.Add(sb.DisplayNameText + " " + sb.GetType().ToString());
-                    }
-                }
+                unlinked = scanBlocks.ToDictionary(
+                    blck => blck.GetId(),
+                    blck => new CB(
+                        blck,
+                        unlinked.ContainsKey(blck.GetId()) ? unlinked[blck.GetId()].check : false
+                    )
+                );
+                unlinked_idx = 0;
             }
-            return result;
+            Echo("4");
+            var source = baseBlock[0].GetInventory();
+            Echo("5");
+            var max = Math.Min(unlinked_idx + 25, unlinked.Count);
+            Echo("6");
+            while (unlinked_idx < max)
+            {
+                var sb = unlinked.ElementAt(unlinked_idx).Value;
+                sb.check = !source.IsConnectedTo(sb.block.GetInventory());
+                unlinked_idx++;
+            }
+            Echo("7");
+
+            return unlinked.Where(sb => sb.Value.check).Select(sb => sb.Value.block.DisplayNameText).ToList();
+            //todo Hydrogen engines - don't work with getinventory (
         }
         public List<string> getDamagedBlocks()
         {
