@@ -25,7 +25,9 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
         public const String Ver = "1.1";
         public List<IMyTerminalBlock> allGridTerminalBlocks = new List<IMyTerminalBlock>();
         public List<IMyThrust> gridThrusters = new List<IMyThrust>();
+        public Dictionary<Base6Directions.Direction, List<IMyThrust>> orientedThrusters;
         public List<IMyShipController> gridControls = new List<IMyShipController>();
+        public IMyShipController manualControl;
         public IMyShipController currentControl;
         public List<IMySensorBlock> gridSensors = new List<IMySensorBlock>();
         public List<IMyPowerProducer> gridGasEngines = new List<IMyPowerProducer>();
@@ -41,6 +43,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
         public double gridLoad = 0;
         public double thrustersLoad = 0;
         public double gravityFactor = 0;
+        public double shipMass = 0;
         public double damagedBlockRatio = 0;
         public double destroyedAmount = 0;
         public List<string> gridDamagedBlocks = new List<string>();
@@ -134,24 +137,14 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
         public double getThrusterLoad(bool offFlag)
         {
             double maxThrust = 0;
-            int tc = 0;
+            if (currentControl == null) return 0;
             var downDirection = Base6Directions.GetOppositeDirection(currentControl.Orientation.Up);
-            double mass = gridControls[0].CalculateShipMass().TotalMass;
-            if ((gridThrusters.Count() == 0) || (gravityFactor == 0))
-            {
-                return 0;
-            }
-            foreach (var thruster in gridThrusters)
-            {
-                if ((!thruster.Closed)
-                    && (thruster.Enabled || offFlag)
-                    && (thruster.Orientation.Forward == downDirection))
-                {
-                    maxThrust += thruster.MaxEffectiveThrust;
-                    tc += 1;
-                }
-            }
-            return mass * gravityFactor / maxThrust;
+            if ((gridThrusters.Count() == 0) || (gravityFactor == 0)) return 0;
+
+            maxThrust = orientedThrusters[downDirection].Where(th => th.Enabled || offFlag).Sum(th => th.MaxEffectiveThrust);
+            logger.write("TL " + orientedThrusters[downDirection].Where(th => th.Enabled || offFlag).Count() + " " + maxThrust + " " + shipMass * gravityFactor + " " + gravityFactor);
+
+            return shipMass * gravityFactor / maxThrust;
         }
 
         public double getCargoLoad()
@@ -172,12 +165,35 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
             return used / space;
         }
 
+        public void updateOrientedThrusters()
+        {
+            if (currentControl == null) return;
+            reScanObjectsLocal(gridThrusters);
+
+            var realDirection = new Dictionary<Base6Directions.Direction, Base6Directions.Direction>();
+            realDirection[Base6Directions.Direction.Down] = currentControl.Orientation.Up;
+            realDirection[Base6Directions.Direction.Right] = currentControl.Orientation.Left;
+            realDirection[Base6Directions.Direction.Forward] = currentControl.Orientation.Forward;
+            realDirection[Base6Directions.Direction.Up] = Base6Directions.GetOppositeDirection(currentControl.Orientation.Up);
+            realDirection[Base6Directions.Direction.Left] = Base6Directions.GetOppositeDirection(currentControl.Orientation.Left);
+            realDirection[Base6Directions.Direction.Backward] = Base6Directions.GetOppositeDirection(currentControl.Orientation.Forward);
+
+
+            orientedThrusters = Enum.GetValues(typeof(Base6Directions.Direction)).Cast<Base6Directions.Direction>().ToDictionary(dir => dir, dir => new List<IMyThrust>());
+
+            foreach (var thruster in gridThrusters.Where(th => !th.Closed))
+            {
+                orientedThrusters[realDirection[thruster.Orientation.Forward]].Add(thruster);
+            }
+        }
+
         public void updateGridInfo()
         {
             saveGridState();
             gridCharge = getGridBatteryCharge();
             gridUnlinkedBlocks = getUnlinkedBlocks(cargoAlignment);
             gridGas = getGridGasAmount("Hydrogen");
+
             gridLoad = getGridUsedCargoSpace();
             gridInventory = getGridInventory();
             gridDamagedBlocks = getDamagedBlocks();
@@ -186,21 +202,14 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
             destroyedAmount = gridDestroyedBlocks.Count();
             if (gridControls.Count() > 0)
             {
-                currentControl = gridControls[0];
-                foreach (var c in gridControls)
-                {
-                    if (c.IsUnderControl)
-                    {
-                        currentControl = c;
-                        break;
-                    }
-                }
+                manualControl = gridControls.Find(obj => obj.IsUnderControl);
+                currentControl = gridControls.Find(obj => obj.CustomName.Contains(controller)) ?? manualControl ?? gridControls[0];
+                shipMass = currentControl.CalculateShipMass().TotalMass;
                 gravityFactor = currentControl.GetNaturalGravity().Length();
+                logger.write("mass: " + shipMass + " " + gravityFactor);
+                updateOrientedThrusters();
+
                 thrustersLoad = getThrusterLoad(false);
-            }
-            if (destroyedAmount > 0)
-            {
-                reScanObjectsLocal(gridThrusters);
             }
         }
 
@@ -210,7 +219,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
             if (gridStateSaved && !update) return;
             reScanObjectsLocal(allGridTerminalBlocks);
             List<IMyThrust> gasThrusters = new List<IMyThrust>();
-            reScanObjectsLocal(gridThrusters);
+            updateOrientedThrusters();
             reScanObjectsLocal(gridControls);
             reScanObjectsLocal(gridGasEngines, item => item.BlockDefinition.SubtypeId.Contains("Hydrogen"));
             reScanObjectsLocal(gasThrusters, item => item.BlockDefinition.SubtypeId.Contains("Hydrogen"));

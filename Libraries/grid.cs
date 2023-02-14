@@ -164,13 +164,10 @@ namespace SpaceEngineers.UWBlockPrograms.Grid //@remove
         {
             var baseBlock = new List<IMyCargoContainer>();
             reScanObjectExactLocal(baseBlock, connectTo);
-            Echo("1");
 
             if (baseBlock.Count == 0) return new List<string>();
-            Echo("2");
             if (unlinked_idx >= unlinked.Count)
             {
-                Echo("3");
                 var scanBlocks = new List<IMyTerminalBlock>();
                 reScanObjectsLocal(scanBlocks, blck => blck.HasInventory && !(blck is IMyCockpit));
                 unlinked = scanBlocks.ToDictionary(
@@ -182,18 +179,14 @@ namespace SpaceEngineers.UWBlockPrograms.Grid //@remove
                 );
                 unlinked_idx = 0;
             }
-            Echo("4");
             var source = baseBlock[0].GetInventory();
-            Echo("5");
             var max = Math.Min(unlinked_idx + 25, unlinked.Count);
-            Echo("6");
             while (unlinked_idx < max)
             {
                 var sb = unlinked.ElementAt(unlinked_idx).Value;
                 sb.check = !source.IsConnectedTo(sb.block.GetInventory());
                 unlinked_idx++;
             }
-            Echo("7");
 
             return unlinked.Where(sb => sb.Value.check).Select(sb => sb.Value.block.DisplayNameText).ToList();
             //todo Hydrogen engines - don't work with getinventory (
@@ -206,6 +199,12 @@ namespace SpaceEngineers.UWBlockPrograms.Grid //@remove
             foreach (var terminalBlock in grid)
             {
                 IMySlimBlock slimBlock = terminalBlock.CubeGrid.GetCubeBlock(terminalBlock.Position);
+                if (!slimBlock.IsFullIntegrity)
+                {
+                    var comp = new Dictionary<string, int>();
+                    slimBlock.GetMissingComponents(comp);
+                    logger.write(terminalBlock.CustomName + ": " + String.Join(", ", comp.Select(obj => obj.Key + "=" + obj.Value)));
+                }
                 if (slimBlock.CurrentDamage > 0)
                 {
                     result.Add(terminalBlock.DisplayNameText);

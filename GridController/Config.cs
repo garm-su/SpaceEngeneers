@@ -55,6 +55,8 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusConfig //@remove
 
         public GyroAligner _aligner;
 
+        public bool autoBot = false;
+
 
         //alert tresholds
         public double energyTreshold = 0.25; //% of max capacity, default - 25%
@@ -65,6 +67,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusConfig //@remove
         public double decelerationDistance = 200;  //distanse of start deceleration with autopilot
         public double minPercentSpeed = 0.3;//min percent of max speed with autopilot
 
+        public IEnumerable<Base6Directions.Direction> allDirections;
 
         public Log logger;
 
@@ -72,6 +75,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusConfig //@remove
 
         public void loadConfig()
         {
+            allDirections = Enum.GetValues(typeof(Base6Directions.Direction)).Cast<Base6Directions.Direction>();
             if (!hasConfSection(Me)) return;
             var ini = new MyIni();
             if (!ini.TryParse(Me.CustomData)) return;
@@ -99,6 +103,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusConfig //@remove
             InitValue(ini.Get(ConfSection, "controller"), ref controller);
 
             InitValue(ini.Get(ConfSection, "cargoAlignment"), ref cargoAlignment);
+            InitValue(ini.Get(ConfSection, "autoBot"), ref autoBot);
 
         }
 
@@ -130,6 +135,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusConfig //@remove
             ini.Set(ConfSection, "minPercentSpeed", minPercentSpeed);
             ini.Set(ConfSection, "controller", controller);
             ini.Set(ConfSection, "cargoAlignment", cargoAlignment);
+            ini.Set(ConfSection, "autoBot", autoBot);
 
             Me.CustomData = ini.ToString();
         }
