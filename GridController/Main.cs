@@ -277,14 +277,19 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
 
             needThrust[Base6Directions.Direction.Down] = gravity.Dot(currentControl.WorldMatrix.Down);
             velosityCompensation[Base6Directions.Direction.Down] = keys.Y == 0 ? requirementVelocity.Dot(currentControl.WorldMatrix.Down) : -keys.Y;
+
             needThrust[Base6Directions.Direction.Left] = gravity.Dot(currentControl.WorldMatrix.Left);
             velosityCompensation[Base6Directions.Direction.Left] = keys.X == 0 ? requirementVelocity.Dot(currentControl.WorldMatrix.Left) : -keys.X;
+
             needThrust[Base6Directions.Direction.Forward] = gravity.Dot(currentControl.WorldMatrix.Forward);
             velosityCompensation[Base6Directions.Direction.Forward] = keys.Z == 0 ? requirementVelocity.Dot(currentControl.WorldMatrix.Forward) : -keys.Z;
+
             needThrust[Base6Directions.Direction.Up] = -needThrust[Base6Directions.Direction.Down];
             velosityCompensation[Base6Directions.Direction.Up] = -velosityCompensation[Base6Directions.Direction.Down];
+
             needThrust[Base6Directions.Direction.Right] = -needThrust[Base6Directions.Direction.Left];
             velosityCompensation[Base6Directions.Direction.Right] = -velosityCompensation[Base6Directions.Direction.Left];
+            
             needThrust[Base6Directions.Direction.Backward] = -needThrust[Base6Directions.Direction.Forward];
             velosityCompensation[Base6Directions.Direction.Backward] = -velosityCompensation[Base6Directions.Direction.Forward];
 

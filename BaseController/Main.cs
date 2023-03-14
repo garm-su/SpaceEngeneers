@@ -92,13 +92,7 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
 
         Messaging Alarms;
 
-        List<FactoryController> factories = new List<FactoryController> {
-           new FactoryController("Factory Small Projector", "LCD Factory"),
-           new FactoryController("Factory Large Projector", "Factory Large LCD"),
-           new FactoryController("BF Small Projector", "BF Small LCD"),
-           new FactoryController("BF Big Projector", "BF Big LCD")
-        };
-
+        Dictionary<string, FactoryController> factories = new Dictionary<string, FactoryController>();
         Dictionary<String, List<IMyAssembler>> assemblersInUse = new Dictionary<String, List<IMyAssembler>>();
         List<IMyAssembler> allAssemblers = new List<IMyAssembler>();
         List<IMyAssembler> availableAssemblers = new List<IMyAssembler>();
@@ -141,15 +135,15 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
             calculateCount();
 
             var ini = new MyIni();
-            ini.TryParse(Me.CustomData);            
-            
+            ini.TryParse(Me.CustomData);
+
             var keys = new List<MyIniKey>();
             ini.GetKeys(Components, keys);
-            minComponents.Clear();            
+            minComponents.Clear();
             keys.ForEach(key => minComponents[key.Name] = ini.Get(key).ToInt32());
 
             ini.GetKeys(Resources, keys);
-            minResources.Clear();            
+            minResources.Clear();
             keys.ForEach(key => minResources[key.Name] = ini.Get(key).ToInt32());
 
             // if (!reReadConfig(ResourcesTag, minResources)) Alarms.warn("There is no " + ResourcesTag + " screen");
@@ -170,10 +164,21 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
             alarmNoObject(foundObjects, minComponents);
 
             checkRunGenerators();
-            foreach (var fc in factories) fc.check();
 
             calculateVolume();
             Alarms.next();
+        }
+
+        public void factoryReScan(){
+            foreach (var fc in factories.Values) fc.reScan();
+        }
+
+        public void factorySecond(){
+            foreach (var fc in factories.Values) fc.second();
+        }
+        public void factoryCheck()
+        {
+            foreach (var fc in factories.Values) fc.check();
         }
 
         public Program()
@@ -186,9 +191,14 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
 
             _scheduler = new Scheduler(this);
             _scheduler.AddScheduledAction(recalcAll, 1);
+            _scheduler.AddScheduledAction(factorySecond, 1);
+            _scheduler.AddScheduledAction(factoryReScan, 0.1);
+            _scheduler.AddScheduledAction(factoryCheck, 10);
+
             _scheduler.AddScheduledAction(logger.printToSurfaces, 1);
 
-            foreach (var fc in factories) fc.connect(this);
+            logger.write("Inited");
+
         }
 
 
@@ -334,7 +344,6 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
                     {
                         var transfered = sourse.TransferItemTo(destination, item);
                         var new_mass = cargo.GetInventory().CurrentMass;
-                        logger.write(">" + (transfered ? "Y" : "F") + (old_mass == new_mass ? "F " : "Y ") + getName(item.Type) + " " + block.CustomName + ">" + cargo.CustomName + " = " + transfered);
                         moved++;
                         if (transfered && new_mass != old_mass) break;
                     }
@@ -472,7 +481,7 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
 
         public void calculateQueueCount()
         {
-            //MyProductionItem item;
+            logger.write("calculateQueueCount");
             int curValue;
             queueResources.Clear();
             CrushedQueued.Clear();
@@ -492,39 +501,34 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
                 if (!queueResources.ContainsKey(prod)) stopAllAssembler(prod);
             }
 
-            Echo("1");
-
-
             var needAssemblers = queueResources.Where(res => !assemblersInUse.ContainsKey(res.Key)).Count();
             var nowSeveralAssemblers = availableAssemblers.Count >= needAssemblers;
-            Echo("2");
 
             if (!nowSeveralAssemblers) //stop all except one on all resources
             {
                 logger.write("Clear avail=" + availableAssemblers.Count + " Used:" + String.Join(",", assemblersInUse.Keys) + " Need:" + String.Join(",", queueResources.Keys));
                 foreach (var productors in assemblersInUse.Values)
                 {
-                    Echo("3");
                     while (productors.Count > 1)
                     {
-                        Echo("Assembler clear except 1");
+                        logger.write("Assembler clear except 1");
                         countClear++;
                         stopAssembler(productors[1]);
                     }
-                    Echo("4");
                 }
             }
-            Echo("5");
+            var first = true;
             while (availableAssemblers.Count > 0)
             {
                 var queuedStarted = false;
                 foreach (string prod in queueResources.Keys)
                 {
+                    if (first && assemblersInUse.ContainsKey(prod)) continue;
                     queuedStarted |= startAssembler(prod);
                 }
-                if (!queuedStarted) break;
+                if (!first && !queuedStarted) break;
+                first = false;
             }
-            Echo("7");
 
             String queued;
             if (queueResources.Count == 0)
@@ -533,7 +537,6 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
             }
             else
             {
-
                 queued = "Assemblers used: " + (allAssemblers.Count - availableAssemblers.Count).ToString() + " of " + allAssemblers.Count.ToString() + "\nQueued:\n";
                 foreach (KeyValuePair<string, int> entry in queueResources)
                 {
@@ -541,14 +544,16 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
                 }
             }
 
-            IMyTextSurface surface = GridTerminalSystem.GetBlockWithName(QueueTag) as IMyTextSurface;
-            if (surface == null)
+
+            var surfaces = new List<IMyTextPanel>();
+            reScanObjectGroup(surfaces, QueueTag);
+            if (surfaces.Count == 0)
             {
                 Alarms.warn("There is no " + QueueTag + " screen");
             }
             else
             {
-                surface.WriteText(queued);
+                surfaces.ForEach(surface => surface.WriteText(queued));
             }
         }
 
@@ -595,7 +600,7 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
         public void h2generatorEnable(bool newEnable)
         {
             var h2gens = new List<IMyPowerProducer>();
-            reScanObjects(h2gens, item => item.BlockDefinition.TypeId.ToString().Contains("Hydrogen"));
+            reScanObjects(h2gens, item => item.BlockDefinition.TypeId.ToString().Contains("Hydrogen") && !item.CustomName.Contains(SKIP));
             h2gens.ForEach(gen => gen.Enabled = newEnable);
             h2generatorStarted = newEnable;
         }
@@ -615,9 +620,37 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
         }
 
 
-        public void Main(string argument, UpdateType updateSource)
+        public void Main(string arg, UpdateType updateSource)
         {
-            _scheduler.Update();
+            if (string.IsNullOrWhiteSpace(arg))
+            {
+                _scheduler.Update();
+                return;
+            }
+
+            logger.write("Main " + arg);
+            if (arg.StartsWith(LogTag)) return;
+            arg += ",,";
+            var props = arg.Split(',');
+            switch (props[0])
+            {
+                case "factoryStart":
+                    if (!factories.ContainsKey(props[1]))
+                    {
+                        factories[props[1]] = new FactoryController(props[1], this);
+                    }
+                    factories[props[1]].start();
+                    break;
+                case "factoryStop":
+                    if (!factories.ContainsKey(props[1]))
+                    {
+                        factories[props[1]] = new FactoryController(props[1], this);
+                    }
+                    factories[props[1]].stop();
+                    break;
+                default:
+                    break;
+            }
         }
 
         private void alarmNoObject(HashSet<string> foundObjects, Dictionary<string, int> minObj)

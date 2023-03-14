@@ -213,5 +213,29 @@ namespace SpaceEngineers.UWBlockPrograms.Grid //@remove
             return result;
         }
 
+        public IEnumerable<IMySlimBlock> slimBlocks(IMyCubeGrid CubeGrid)
+        {
+            IMySlimBlock item;
+            var gridMax = CubeGrid.Max;
+            var gridMin = CubeGrid.Min;
+            logger.write(gridMin.ToString() + " - " + gridMax.ToString());
+            for (int x = gridMin.X; x <= gridMax.X; x++)
+            {
+                for (int y = gridMin.Y; y <= gridMax.Y; y++)
+                {
+                    for (int z = gridMin.Z; z <= gridMax.Z; z++)
+                    {
+                        item = CubeGrid.GetCubeBlock(new Vector3I(x, y, z));
+
+                        if (item != null)
+                        {
+                            yield return item;
+                        }
+
+                    }
+                }
+            }
+        }
+
     } //@remove
 } //@remove

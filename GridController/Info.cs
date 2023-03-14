@@ -138,7 +138,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
         {
             double maxThrust = 0;
             if (currentControl == null) return 0;
-            var downDirection = Base6Directions.GetOppositeDirection(currentControl.Orientation.Up);
+            var downDirection = Base6Directions.Direction.Down;
             if ((gridThrusters.Count() == 0) || (gravityFactor == 0)) return 0;
 
             maxThrust = orientedThrusters[downDirection].Where(th => th.Enabled || offFlag).Sum(th => th.MaxEffectiveThrust);
@@ -169,22 +169,36 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatusInfo //@remove
         {
             if (currentControl == null) return;
             reScanObjectsLocal(gridThrusters);
-
-            var realDirection = new Dictionary<Base6Directions.Direction, Base6Directions.Direction>();
-            realDirection[Base6Directions.Direction.Down] = currentControl.Orientation.Up;
-            realDirection[Base6Directions.Direction.Right] = currentControl.Orientation.Left;
-            realDirection[Base6Directions.Direction.Forward] = currentControl.Orientation.Forward;
-            realDirection[Base6Directions.Direction.Up] = Base6Directions.GetOppositeDirection(currentControl.Orientation.Up);
-            realDirection[Base6Directions.Direction.Left] = Base6Directions.GetOppositeDirection(currentControl.Orientation.Left);
-            realDirection[Base6Directions.Direction.Backward] = Base6Directions.GetOppositeDirection(currentControl.Orientation.Forward);
-
-
+            Matrix MatrixCockpit;
+            currentControl.Orientation.GetMatrix(out MatrixCockpit);
+            Matrix.Transpose(ref MatrixCockpit, out MatrixCockpit);
             orientedThrusters = Enum.GetValues(typeof(Base6Directions.Direction)).Cast<Base6Directions.Direction>().ToDictionary(dir => dir, dir => new List<IMyThrust>());
 
             foreach (var thruster in gridThrusters.Where(th => !th.Closed))
             {
-                orientedThrusters[realDirection[thruster.Orientation.Forward]].Add(thruster);
+                Matrix fromThrusterToGrid;
+                thruster.Orientation.GetMatrix(out fromThrusterToGrid);
+                // Vector3 tDirection = Vector3.Transform(fromThrusterToGrid.Forward, MatrixCockpit);
+                Vector3 tDirection = fromThrusterToGrid.Forward;
+                // logger.write((tDirection == MatrixCockpit.Left ? Base6Directions.Direction.Left :
+                //     tDirection == MatrixCockpit.Right ? Base6Directions.Direction.Right :
+                //     tDirection == MatrixCockpit.Up ? Base6Directions.Direction.Up :
+                //     tDirection == MatrixCockpit.Down ? Base6Directions.Direction.Down :
+                //     tDirection == MatrixCockpit.Forward ? Base6Directions.Direction.Forward :
+                //     Base6Directions.Direction.Backward).ToString()+": "+thruster.CustomName);
+                orientedThrusters[
+                    tDirection == MatrixCockpit.Left ? Base6Directions.Direction.Left :
+                    tDirection == MatrixCockpit.Right ? Base6Directions.Direction.Right :
+                    tDirection == MatrixCockpit.Up ? Base6Directions.Direction.Up :
+                    tDirection == MatrixCockpit.Down ? Base6Directions.Direction.Down :
+                    tDirection == MatrixCockpit.Forward ? Base6Directions.Direction.Forward :
+                    Base6Directions.Direction.Backward
+                ].Add(thruster);
             }
+
+            foreach (var o in orientedThrusters){
+                logger.write(o.Key.ToString() + ": " + o.Value.Count);
+            }            
         }
 
         public void updateGridInfo()

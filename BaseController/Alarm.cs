@@ -88,7 +88,6 @@ public class Messaging
         Messages["Info"] = infoMess = new MessageOfType("Info");
 
         runningFrame = 0;
-        runningMult = 10;
     }
 
     public void alarm(String message)
@@ -107,10 +106,10 @@ public class Messaging
     void updateLoader()
     {
         var command = new JsonObject("");
-        runningFrame = (runningFrame + 1) % (animFrames.Count() * runningMult);
+        runningFrame = (runningFrame + 1) % animFrames.Count();
         command.Add(new JsonPrimitive("Action", "BaseStatus"));
         command.Add(new JsonPrimitive("Type", "Loader"));
-        command.Add(new JsonPrimitive("Value", animFrames[runningFrame / runningMult]));
+        command.Add(new JsonPrimitive("Value", animFrames[runningFrame]));
         parent.IGC.SendBroadcastMessage(parent.commandChannelTag, command.ToString());
     }
 
@@ -121,7 +120,6 @@ public class Messaging
         foreach (var message in Messages.Values)
         {
             var status = message.next();
-            parent.Echo("Next(" + message.prefix + "): " + (status == null ? "Null" : "\"" + status.ToString() + "\""));
             if (status != null)
             {
                 parent.IGC.SendBroadcastMessage(parent.commandChannelTag, status);

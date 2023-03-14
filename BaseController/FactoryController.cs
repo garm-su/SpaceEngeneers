@@ -23,23 +23,47 @@ using SpaceEngineers.UWBlockPrograms.BaseController;
 public class FactoryController
 {
     public IMyProjector projector { get; set; }
-    public IMyTextSurface LCD { get; set; }
+    public List<IMyTextSurface> LCDs { get; set; }
+    public List<IMyShipWelder> welders { get; set; }
+    public List<IMyPistonBase> pistons { get; set; }
     public IMyCubeGrid CubeGrid { get; set; }
-    private string LCD_name;
-    private string projector_name;
+
+    public bool started = false;
+
+    private string group_name;
 
     private Program parent;
-    public FactoryController(string projector, string LCD)
-    {
-        this.LCD_name = LCD;
-        this.projector_name = projector;
-    }
-    public void connect(Program program)
+    public FactoryController(string group_name, Program program)
     {
         this.parent = program;
-        this.projector = parent.GridTerminalSystem.GetBlockWithName(this.projector_name) as IMyProjector;
-        this.LCD = parent.GridTerminalSystem.GetBlockWithName(this.LCD_name) as IMyTextSurface;
-        this.CubeGrid = this.projector.CubeGrid;
+        this.group_name = group_name;
+        reScan();
+    }
+    public void reScan()
+    {
+        var group = parent.GridTerminalSystem.GetBlockGroupWithName(this.group_name);
+
+        var projectors = new List<IMyProjector>();
+        group.GetBlocksOfType(projectors);
+        if (projectors.Count == 1)
+        {
+            this.projector = projectors[0];
+            this.CubeGrid = this.projector.CubeGrid;
+        }
+        else
+        {
+            this.projector = null;
+            this.CubeGrid = null;
+        }
+
+        this.LCDs = new List<IMyTextSurface>();
+        group.GetBlocksOfType(this.LCDs);
+
+        this.welders = new List<IMyShipWelder>();
+        group.GetBlocksOfType(this.welders);
+
+        this.pistons = new List<IMyPistonBase>();
+        group.GetBlocksOfType(this.pistons);
     }
 
     public void stopEngines()
@@ -54,11 +78,76 @@ public class FactoryController
         }
     }
 
+    public void start()
+    {
+        parent.logger.write("START");
+        started = true;
+        WelderEnabled(true);
+    }
+
+    public void stop()
+    {
+        parent.logger.write("STOP");
+        if (!started) return;
+        started = false;
+        WelderEnabled(false);
+        PistonEnabled(false);
+        foreach (var lcd in this.LCDs)
+        {
+            lcd.WriteText("DONE");
+        }
+    }
+
+    private void PistonEnabled(bool active)
+    {
+        if (pistons.Count == 0) return;
+
+        parent.logger.write("Piston " + active + " was " + pistons[0].Enabled);
+        if (active == pistons[0].Enabled) return;
+        foreach (var pistons in pistons)
+        {
+            pistons.Enabled = active;
+        }
+    }
+
+    private void WelderEnabled(bool active)
+    {
+        parent.logger.write("Welder " + active);
+        foreach (var welder in welders)
+        {
+            welder.Enabled = active;
+        }
+    }
+
+    public void second()
+    {
+        if (started && pistons.Count > 0 && pistons[0].Enabled)
+        {
+            PistonEnabled(false);
+        }
+    }
+
     public void check()
     {
-        if (!this.projector.IsProjecting || this.projector.TotalBlocks == 0) return;
+        if (!started) return;
+        if (!this.projector.IsProjecting || this.projector.TotalBlocks == 0 || this.projector.RemainingBlocks == 0)
+        {
+            stop();
+            return;
+        }
 
         stopEngines();
+
+        var allConstucted = true;
+        foreach (var block in this.parent.slimBlocks(CubeGrid))
+        {
+            if (!block.IsFullIntegrity)
+            {
+                allConstucted = false;
+                break;
+            }
+        }
+        PistonEnabled(allConstucted);
 
         String result = "Progression: \n";
         result += String.Format("Buildable: {0}\n", this.projector.BuildableBlocksCount);
@@ -69,9 +158,11 @@ public class FactoryController
 
         result += String.Format("\nProgression: {0}\n", 100 * (1 - this.projector.RemainingBlocks / this.projector.TotalBlocks));
 
-        // Dictionary<MyDefinitionBase, int> RemainingBlocksPerType { get; }
         result += "\n" + this.projector.DetailedInfo;
 
-        this.LCD.WriteText(result);
+        foreach (var lcd in this.LCDs)
+        {
+            lcd.WriteText(result);
+        }
     }
 }
