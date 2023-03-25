@@ -39,9 +39,7 @@ namespace SpaceEngineers.UWBlockPrograms.JSONtest   //@remove
             Echo("Hello World!");
             if (argument == "xxx")
             {
-
-                var testStr = "{\"Name\":\"xxx\", \"Val\":123.3}";
-
+                var testStr = "{\n\"Action\": \"BaseStatus\",\n\"Type\": \"Warn\",\n\"Value\": \"Warn:\nToo few Magnesium ( 2.8K )\nToo few Ice ( 91.9K )\nTHERE IS NO [CARGO] LCD\"\n}";
                 try
                 {
                     var jsonData = (new JSON(testStr)).Parse();
