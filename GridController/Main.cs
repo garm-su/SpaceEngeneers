@@ -289,7 +289,7 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
 
             needThrust[Base6Directions.Direction.Right] = -needThrust[Base6Directions.Direction.Left];
             velosityCompensation[Base6Directions.Direction.Right] = -velosityCompensation[Base6Directions.Direction.Left];
-            
+
             needThrust[Base6Directions.Direction.Backward] = -needThrust[Base6Directions.Direction.Forward];
             velosityCompensation[Base6Directions.Direction.Backward] = -velosityCompensation[Base6Directions.Direction.Forward];
 
@@ -428,6 +428,42 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
             echoLine += "Started\n";
         }
 
+        public void CargoTB(string v, string TBLess, string TBMore)
+        {
+            float loadThreshold;
+            if (!float.TryParse(v, out loadThreshold))
+            {
+                echoLine += "Wrong float " + v + "\n";
+                return;
+            }
+            var tbToRun = gridLoad < loadThreshold ? TBLess : TBMore;
+            Echo("TB " + tbToRun + " " + gridLoad + loadThreshold);
+            runTbByName(tbToRun);
+        }
+
+        public void pistonChange(string groupName, string param, string v)
+        {
+            var group = GridTerminalSystem.GetBlockGroupWithName(groupName);
+            var pistons = new List<IMyPistonBase>();
+            group.GetBlocksOfType(pistons);
+            float addLength;
+            if (!float.TryParse(v, out addLength))
+            {
+                echoLine += "Wrong float " + v + "\n";
+                return;
+            }
+
+            switch (param)
+            {
+                case "MinLimit":
+                    pistons.ForEach(piston => piston.MinLimit += addLength);
+                    break;
+                case "MaxLimit":
+                    pistons.ForEach(piston => piston.MaxLimit += addLength);
+                    break;
+            }
+        }
+
         public void remoteTimerBlock(string gridName, string tbName)
         {
             var command = new JsonObject("");
@@ -441,11 +477,17 @@ namespace SpaceEngineers.UWBlockPrograms.GridStatus //@remove
         {
             logger.write("Main " + arg);
             if (arg.StartsWith(LogTag)) return;
-            arg += ",,";
+            arg += ",,,";
             var props = arg.Split(',');
 
             switch (props[0])
             {
+                case "CargoTB":
+                    CargoTB(props[1], props[2], props[3]);
+                    break;
+                case "IMyPistonBase":
+                    pistonChange(props[1], props[2], props[3]);
+                    break;
                 case "Battery":
                     batteryLoad(props[1]);
                     break;

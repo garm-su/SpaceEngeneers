@@ -45,3 +45,10 @@ release - release locked target
 autolock - infinite repeate locking
 autoaim - align to locked target shooting direction
 detectAll - switch locking mode (all/enemies)
+
+// object params
+IMyPistonBase,Piston V Elephant,MaxLimit,0.34
+
+
+// запустить первый тб, если загрузка меньше числа, иначе - 2й
+CargoTB,0.6,TB UnPause Elephant,TB Pause Elephant
