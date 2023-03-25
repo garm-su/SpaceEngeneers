@@ -169,11 +169,13 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
             Alarms.next();
         }
 
-        public void factoryReScan(){
+        public void factoryReScan()
+        {
             foreach (var fc in factories.Values) fc.reScan();
         }
 
-        public void factorySecond(){
+        public void factorySecond()
+        {
             foreach (var fc in factories.Values) fc.second();
         }
         public void factoryCheck()
@@ -511,7 +513,7 @@ namespace SpaceEngineers.UWBlockPrograms.BaseController //@remove
                 {
                     while (productors.Count > 1)
                     {
-                        logger.write("Assembler clear except 1");
+                        logger.write("Assembler clear except " + needAssemblers + " " + nowSeveralAssemblers);
                         countClear++;
                         stopAssembler(productors[1]);
                     }

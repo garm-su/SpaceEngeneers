@@ -29,6 +29,9 @@ public class FactoryController
     public IMyCubeGrid CubeGrid { get; set; }
 
     public bool started = false;
+    public int RemainingBlocks = 0;
+    public int skip_move = 0;
+    public int skip_on_weld_count = 10;
 
     private string group_name;
 
@@ -127,9 +130,46 @@ public class FactoryController
         }
     }
 
+    public void UpdateInfo()
+    {
+        if (this.projector.RemainingBlocks != this.RemainingBlocks)
+        {
+            this.skip_move = skip_on_weld_count;
+            this.RemainingBlocks = this.projector.RemainingBlocks;
+            parent.logger.write("REMAIN = " + this.RemainingBlocks);
+        }
+
+        String result = "Factory \"" + this.group_name + "\": [" + (started ? "ON" : "OFF") + "]\n";
+        result += String.Format("Pistons: {0} [{1}]\n", this.pistons.Count, (this.pistons.Count > 0 && this.pistons[0].Enabled ? "ON" : "OFF"));
+        result += String.Format("Welders: {0}\n", this.welders.Count);
+        result += String.Format("Buildable: {0}\n", this.projector.BuildableBlocksCount);
+        int remaining = this.projector.RemainingBlocks - this.projector.RemainingArmorBlocks;
+
+        result += String.Format("Remaining armor: {0}%\n", 100 * this.projector.RemainingArmorBlocks / this.projector.TotalBlocks);
+        result += String.Format("Remaining actions: {0}%\n", 100 * remaining / this.projector.TotalBlocks);
+
+        result += String.Format("\nProgression: {0}\n", 100 * (1 - this.projector.RemainingBlocks / this.projector.TotalBlocks));
+
+        result += "\n" + this.projector.DetailedInfo;
+
+        foreach (var lcd in this.LCDs)
+        {
+            lcd.WriteText(result);
+        }
+    }
+
     public void check()
     {
+        UpdateInfo();
+
         if (!started) return;
+        if (this.skip_move > 0)
+        {
+            PistonEnabled(false);
+            this.skip_move--;
+            parent.logger.write("SKIP = " + this.skip_move);
+            return;
+        }
         if (!this.projector.IsProjecting || this.projector.TotalBlocks == 0 || this.projector.RemainingBlocks == 0)
         {
             stop();
@@ -148,21 +188,5 @@ public class FactoryController
             }
         }
         PistonEnabled(allConstucted);
-
-        String result = "Progression: \n";
-        result += String.Format("Buildable: {0}\n", this.projector.BuildableBlocksCount);
-        int remaining = this.projector.RemainingBlocks - this.projector.RemainingArmorBlocks;
-
-        result += String.Format("Remaining armor: {0}%\n", 100 * this.projector.RemainingArmorBlocks / this.projector.TotalBlocks);
-        result += String.Format("Remaining actions: {0}%\n", 100 * remaining / this.projector.TotalBlocks);
-
-        result += String.Format("\nProgression: {0}\n", 100 * (1 - this.projector.RemainingBlocks / this.projector.TotalBlocks));
-
-        result += "\n" + this.projector.DetailedInfo;
-
-        foreach (var lcd in this.LCDs)
-        {
-            lcd.WriteText(result);
-        }
     }
 }
